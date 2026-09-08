@@ -21,6 +21,14 @@ import { ACCESS_TOKEN_COOKIE, ROLE_COOKIE, type Role } from "@/lib/cookies";
 import { decodeAccessToken, isTokenExpired } from "@/lib/jwt";
 import type { UserResponse } from "@/lib/types";
 
+const KNOWN_ROLES: readonly Role[] = ["customer", "business_owner", "admin"];
+
+/** The cached role, defaulting to the least-privileged value. */
+function readRoleCookie(): Role {
+  const value = cookies().get(ROLE_COOKIE)?.value;
+  return KNOWN_ROLES.includes(value as Role) ? (value as Role) : "customer";
+}
+
 export interface Session {
   /** The raw JWT, as stored in the httpOnly cookie. */
   token: string;
@@ -59,7 +67,7 @@ export function getSession(): Session | null {
     token,
     userId,
     expiresAt: new Date(claims.exp * 1000),
-    role: cookies().get(ROLE_COOKIE)?.value === "admin" ? "admin" : "user",
+    role: readRoleCookie(),
   };
 }
 
@@ -111,6 +119,22 @@ export async function requireUser(returnTo?: string): Promise<UserResponse> {
   const user = await getCurrentUser();
   if (user === null) {
     redirect(loginUrl(returnTo, getSession() !== null));
+  }
+  return user;
+}
+
+/**
+ * Require a business owner, verified against the backend.
+ *
+ * Admins pass too, so they can administer any listing. Like requireAdmin this
+ * checks /me rather than the cached cookie, because the cookie is only a hint.
+ */
+export async function requireBusinessOwner(
+  returnTo?: string,
+): Promise<UserResponse> {
+  const user = await requireUser(returnTo);
+  if (user.role !== "business_owner" && user.role !== "admin" && !user.is_admin) {
+    redirect(loginUrl(returnTo, true));
   }
   return user;
 }

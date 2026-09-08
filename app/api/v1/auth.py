@@ -35,6 +35,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> TokenRespon
         hashed_password=hash_password(payload.password),
         phone=payload.phone,
         preferred_contact_method=payload.preferred_contact_method,
+        role=payload.role,
     )
     db.add(user)
     db.commit()

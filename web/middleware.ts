@@ -21,6 +21,16 @@ const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
 /** Prefixes that additionally require is_admin. */
 const ADMIN_PREFIXES = ["/admin"];
 
+/**
+ * Prefixes that require a business-owner (or admin) account.
+ *
+ * Before this existed /dashboard was gated on authentication alone, so any
+ * signed-in customer could open the owner console.
+ */
+const OWNER_PREFIXES = ["/dashboard"];
+
+const OWNER_ROLES = new Set(["business_owner", "admin"]);
+
 function matches(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -60,11 +70,16 @@ export function middleware(req: NextRequest): NextResponse {
     return redirectToLogin(req, pathname, Boolean(token));
   }
 
+  const role = req.cookies.get(ROLE_COOKIE)?.value ?? "";
+
   // Signed in but not an admin.
-  if (matches(pathname, ADMIN_PREFIXES)) {
-    if (req.cookies.get(ROLE_COOKIE)?.value !== "admin") {
-      return redirectToLogin(req, pathname, false, true);
-    }
+  if (matches(pathname, ADMIN_PREFIXES) && role !== "admin") {
+    return redirectToLogin(req, pathname, false, true);
+  }
+
+  // Signed in but not a business owner.
+  if (matches(pathname, OWNER_PREFIXES) && !OWNER_ROLES.has(role)) {
+    return redirectToLogin(req, pathname, false, true);
   }
 
   return NextResponse.next();

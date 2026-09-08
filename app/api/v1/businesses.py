@@ -9,7 +9,7 @@ from sqlalchemy import Float, and_, asc, case, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.models.business import Business
+from app.models.business import Business, BusinessStatus
 from app.models.category import Category
 from app.schemas.directory import BusinessListItem, BusinessSort, SearchResponse
 
@@ -79,7 +79,12 @@ def search_businesses(
 
     distance = _distance_km(lat, lng) if has_point else None
 
-    filters = [Business.is_active.is_(True)]
+    # is_active is the owner's pause switch; status is moderation. A listing
+    # needs both to be publicly visible, and a pending one must never leak.
+    filters = [
+        Business.is_active.is_(True),
+        Business.status == BusinessStatus.approved,
+    ]
 
     needle = _escape_like(q.strip()) if q else ""
     if needle:

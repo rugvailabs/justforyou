@@ -6,7 +6,7 @@ model file must be added to this module.
 
 from app.models.audit_log import AuditLog
 from app.models.base import Base
-from app.models.business import Business
+from app.models.business import Business, BusinessStatus
 from app.models.category import Category
 from app.models.consent import Consent, ConsentType
 from app.models.extracted_problem import ExtractedProblem, Urgency
@@ -19,12 +19,13 @@ from app.models.message_sent import (
 from app.models.provider import Provider
 from app.models.review_queue import ReviewDecision, ReviewQueue
 from app.models.submission import InputType, Submission, SubmissionStatus
-from app.models.user import PreferredContactMethod, User
+from app.models.user import PreferredContactMethod, User, UserRole
 
 __all__ = [
     "AuditLog",
     "Base",
     "Business",
+    "BusinessStatus",
     "Category",
     "Consent",
     "ConsentType",
@@ -43,4 +44,5 @@ __all__ = [
     "SubmissionStatus",
     "PreferredContactMethod",
     "User",
+    "UserRole",
 ]

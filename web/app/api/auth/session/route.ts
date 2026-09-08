@@ -43,6 +43,7 @@ interface SessionRequestBody {
   phone?: unknown;
   preferred_contact_method?: unknown;
   access_token?: unknown;
+  role?: unknown;
 }
 
 function bad(detail: string, status = 400): NextResponse {
@@ -75,7 +76,9 @@ function setSessionCookies(
 
   res.cookies.set(ACCESS_TOKEN_COOKIE, token, common);
   // Role is cached so middleware can gate /admin without calling the backend.
-  res.cookies.set(ROLE_COOKIE, user.is_admin ? "admin" : "user", common);
+  // is_admin still wins: it is the authority for the review console, and a
+  // user can be flagged admin without role having been migrated.
+  res.cookies.set(ROLE_COOKIE, user.is_admin ? "admin" : user.role, common);
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -101,10 +104,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (!isNonEmptyString(body.email)) return bad("`email` is required.");
       if (!isNonEmptyString(body.password)) return bad("`password` is required.");
 
+      // Only these two are forwarded. Passing the role straight through would
+      // let anyone mint an admin by POSTing {"role":"admin"} here; the backend
+      // rejects it too, but this route must not be the thing relying on that.
+      const requestedRole =
+        body.role === "business_owner" ? "business_owner" : "customer";
+
       const created: TokenResponse = await signup({
         name: body.name,
         email: body.email,
         password: body.password,
+        role: requestedRole,
         phone: isNonEmptyString(body.phone) ? body.phone : null,
         ...(isNonEmptyString(body.preferred_contact_method)
           ? {

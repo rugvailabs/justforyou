@@ -6,6 +6,7 @@ from app.api.v1 import (
     audit,
     auth,
     businesses,
+    businesses_owner,
     categories,
     consents,
     profile,
@@ -17,6 +18,7 @@ api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
 api_router.include_router(audit.router)
 api_router.include_router(businesses.router)
+api_router.include_router(businesses_owner.router)
 api_router.include_router(categories.router)
 api_router.include_router(consents.router)
 api_router.include_router(profile.router)

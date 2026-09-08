@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import JWTError, decode_access_token
+from app.models.business import Business
 from app.models.consent import Consent, ConsentType
-from app.models.user import User
+from app.models.user import User, UserRole
 
 # auto_error=False so a missing header reaches us and becomes a 401,
 # rather than HTTPBearer's own 403.
@@ -65,6 +66,50 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="Admin privileges required",
         )
     return current_user
+
+
+def require_business_owner(current_user: User = Depends(get_current_user)) -> User:
+    """Admit business owners, and admins acting on their behalf.
+
+    This gates "may use the owner dashboard at all". It deliberately says
+    nothing about *which* listings the caller may touch - that is per-object
+    and is enforced by require_owned_business below. Conflating the two is how
+    one owner ends up reading another's leads.
+    """
+    if current_user.role not in (UserRole.business_owner, UserRole.admin) and not (
+        current_user.is_admin
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A business owner account is required",
+        )
+    return current_user
+
+
+def require_owned_business(
+    business_id: int,
+    current_user: User = Depends(require_business_owner),
+    db: Session = Depends(get_db),
+) -> "Business":
+    """Resolve a listing the current user is allowed to administer.
+
+    404 for a listing that does not exist, 403 for one owned by somebody else.
+    A listing with no owner (the pre-ownership seed data) is editable only by
+    an admin, never adoptable by whoever asks first.
+    """
+    business = db.get(Business, business_id)
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
+        )
+
+    is_admin = current_user.is_admin or current_user.role is UserRole.admin
+    if business.owner_id != current_user.id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this listing",
+        )
+    return business
 
 
 def require_consent(consent_type: str) -> Callable[..., User]:

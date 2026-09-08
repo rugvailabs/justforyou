@@ -23,7 +23,12 @@ export const ACCESS_TOKEN_COOKIE = "jd_web_access_token";
  */
 export const ROLE_COOKIE = "jd_web_role";
 
-export type Role = "admin" | "user";
+/**
+ * Mirrors the backend's UserRole enum. Cached at sign-in so edge middleware
+ * can gate /dashboard and /admin without a round trip; the server-side
+ * require* helpers re-check against /me, which is what actually counts.
+ */
+export type Role = "customer" | "business_owner" | "admin";
 
 /**
  * Cookie lifetime in seconds.

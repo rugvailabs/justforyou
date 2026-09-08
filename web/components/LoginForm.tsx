@@ -32,6 +32,7 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,7 +47,14 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           mode === "signup"
-            ? { mode, name, email, password, phone: phone || null }
+            ? {
+                mode,
+                name,
+                email,
+                password,
+                phone: phone || null,
+                role: isOwner ? "business_owner" : "customer",
+              }
             : { mode, email, password },
         ),
       });
@@ -159,6 +167,23 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
             autoComplete="tel"
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
           />
+        </label>
+      ) : null}
+
+      {mode === "signup" ? (
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={isOwner}
+            onChange={(e) => setIsOwner(e.target.checked)}
+            className="mt-1"
+          />
+          <span className="text-sm text-slate-700">
+            I want to list a business
+            <span className="block text-xs text-slate-500">
+              Gives you access to the owner dashboard.
+            </span>
+          </span>
         </label>
       ) : null}
 

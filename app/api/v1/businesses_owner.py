@@ -1,0 +1,195 @@
+"""Owner-facing listing management.
+
+Split from businesses.py so the public search surface and the authenticated
+owner surface stay visibly separate - it should be obvious at a glance which
+routes are reachable without a token.
+
+ROUTE ORDER MATTERS. FastAPI matches in declaration order, so the literal
+paths here ("/owner/mine", "/by-slug/{slug}") must be registered before the
+parameterised "/{business_id}" or "owner" gets parsed as a business id and
+422s instead of routing.
+"""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.db import get_db
+from app.core.deps import (
+    get_current_user,
+    require_business_owner,
+    require_owned_business,
+)
+from app.models.business import Business, BusinessStatus
+from app.models.category import Category
+from app.models.user import User, UserRole
+from app.schemas.directory import (
+    BusinessCreate,
+    BusinessDetail,
+    BusinessOwnerItem,
+    BusinessUpdate,
+)
+
+router = APIRouter(prefix="/businesses", tags=["directory"])
+
+MAX_SLUG_LENGTH = 255
+
+
+def _slugify(value: str) -> str:
+    """Lowercase ASCII slug. Accents are folded rather than dropped, so
+    "Café Lumière" becomes "cafe-lumiere" and not "caf-lumire"."""
+    folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", folded.lower()).strip("-")
+    return slug[:MAX_SLUG_LENGTH] or "listing"
+
+
+def _unique_slug(db: Session, base: str) -> str:
+    """Append -2, -3 … until the slug is free.
+
+    Slugs are the public URL key and are UNIQUE in the database, so two
+    listings called "Toronto Plumbing" must not collide on insert.
+    """
+    slug = base
+    suffix = 2
+    while db.scalar(select(Business.id).where(Business.slug == slug)) is not None:
+        # Keep room for the suffix rather than overflowing the column.
+        trimmed = base[: MAX_SLUG_LENGTH - len(str(suffix)) - 1]
+        slug = f"{trimmed}-{suffix}"
+        suffix += 1
+    return slug
+
+
+def _detail(db: Session, business: Business) -> BusinessDetail:
+    """Serialise a listing, resolving the category for display."""
+    detail = BusinessDetail.model_validate(business)
+    category = db.get(Category, business.category_id)
+    if category is not None:
+        detail.category_slug = category.slug
+        detail.category_name = category.name
+    return detail
+
+
+@router.get("/owner/mine", response_model=list[BusinessOwnerItem])
+def list_my_businesses(
+    current_user: User = Depends(require_business_owner),
+    db: Session = Depends(get_db),
+) -> list[Business]:
+    """Every listing owned by the caller, newest first, whatever its status."""
+    return list(
+        db.scalars(
+            select(Business)
+            .where(Business.owner_id == current_user.id)
+            .order_by(Business.created_at.desc(), Business.id.desc())
+        ).all()
+    )
+
+
+@router.get("/by-slug/{slug}", response_model=BusinessDetail)
+def get_business_by_slug(slug: str, db: Session = Depends(get_db)) -> BusinessDetail:
+    """Public listing detail.
+
+    Approved and active only: an unapproved listing must 404 rather than be
+    readable by anyone who guesses its slug.
+    """
+    business = db.scalar(
+        select(Business).where(
+            Business.slug == slug,
+            Business.status == BusinessStatus.approved,
+            Business.is_active.is_(True),
+        )
+    )
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
+        )
+    return _detail(db, business)
+
+
+@router.post("", response_model=BusinessDetail, status_code=status.HTTP_201_CREATED)
+def create_business(
+    payload: BusinessCreate,
+    current_user: User = Depends(require_business_owner),
+    db: Session = Depends(get_db),
+) -> BusinessDetail:
+    """Create a listing owned by the caller, pending moderation."""
+    if db.get(Category, payload.category_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unknown category",
+        )
+
+    data = payload.model_dump()
+    # HttpUrl is not a str as far as SQLAlchemy is concerned.
+    website = data.pop("website", None)
+
+    business = Business(
+        **data,
+        website=str(website) if website is not None else None,
+        slug=_unique_slug(db, _slugify(payload.name)),
+        owner_id=current_user.id,
+        # Server-assigned. A client-supplied status would be self-approval.
+        status=BusinessStatus.pending,
+        is_active=True,
+        verified=False,
+        rating=None,
+        review_count=0,
+    )
+    db.add(business)
+    db.commit()
+    db.refresh(business)
+    return _detail(db, business)
+
+
+@router.get("/{business_id}", response_model=BusinessDetail)
+def get_my_business(
+    business: Business = Depends(require_owned_business),
+    db: Session = Depends(get_db),
+) -> BusinessDetail:
+    """Listing detail for the edit form. Ownership enforced by the dependency."""
+    return _detail(db, business)
+
+
+@router.patch("/{business_id}", response_model=BusinessDetail)
+def update_business(
+    payload: BusinessUpdate,
+    business: Business = Depends(require_owned_business),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BusinessDetail:
+    """Partial update of a listing the caller owns."""
+    # exclude_unset so an omitted field is left alone, while an explicit null
+    # genuinely clears it.
+    updates = payload.model_dump(exclude_unset=True)
+
+    if "category_id" in updates and updates["category_id"] is not None:
+        if db.get(Category, updates["category_id"]) is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Unknown category",
+            )
+
+    if "website" in updates and updates["website"] is not None:
+        updates["website"] = str(updates["website"])
+
+    # Editing a live listing sends it back for re-approval, so an owner cannot
+    # get something approved and then swap its content. Admins are exempt.
+    is_admin = current_user.is_admin or current_user.role is UserRole.admin
+    content_fields = set(updates) - {"is_active"}
+    if (
+        content_fields
+        and business.status is BusinessStatus.approved
+        and not is_admin
+    ):
+        business.status = BusinessStatus.pending
+
+    for field, value in updates.items():
+        setattr(business, field, value)
+
+    db.commit()
+    db.refresh(business)
+    return _detail(db, business)

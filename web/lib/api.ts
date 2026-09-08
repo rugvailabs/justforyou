@@ -16,8 +16,12 @@
 import { ACCESS_TOKEN_COOKIE } from "@/lib/cookies";
 import type {
   ApiErrorPayload,
+  BusinessCreate,
+  BusinessDetail,
   BusinessListItem,
+  BusinessOwnerItem,
   BusinessSearchParams,
+  BusinessUpdate,
   Category,
   LoginRequest,
   SearchResponse,
@@ -298,43 +302,65 @@ export function searchBusinesses(
 }
 
 /**
- * Fetch a single listing by slug.
+ * GET /businesses/by-slug/{slug} - public listing detail.
  *
- * STOPGAP. The backend has no `GET /businesses/{slug}` detail endpoint, so
- * this pages through /businesses/search looking for an exact slug match.
+ * Approved and active only; anything else 404s, which is what the public
+ * detail page turns into notFound(). Returns null instead of throwing on 404
+ * so callers do not have to catch to handle "no such listing".
  *
- * Why not search by name: slugs do not round-trip. "gta-storage-and-haul" is
- * "GTA Storage & Haul", and no ILIKE on the de-slugged words finds it. So the
- * scan is over pages, not a guessed query.
- *
- * That makes this O(rows) and it is capped at MAX_SLUG_SCAN_PAGES so a large
- * catalogue cannot turn one page view into an unbounded crawl. Replace the
- * whole function the moment a real detail endpoint exists - it should be a
- * single keyed request, and it also needs to be what enforces "approved only".
+ * (This replaced a stopgap that paged through /businesses/search looking for
+ * a slug match, because no detail endpoint existed.)
  */
-const SLUG_SCAN_PAGE_SIZE = 50;
-const MAX_SLUG_SCAN_PAGES = 10;
-
 export async function getBusinessBySlug(
   slug: string,
-): Promise<BusinessListItem | null> {
-  const wanted = slug.trim().toLowerCase();
-  if (!wanted) return null;
-
-  for (let page = 1; page <= MAX_SLUG_SCAN_PAGES; page += 1) {
-    const results = await searchBusinesses({
-      page,
-      page_size: SLUG_SCAN_PAGE_SIZE,
-      sort: "name",
-    });
-
-    const match = results.items.find((item) => item.slug.toLowerCase() === wanted);
-    if (match) return match;
-
-    if (!results.has_next) return null;
+): Promise<BusinessDetail | null> {
+  try {
+    return await apiFetch<BusinessDetail>(
+      `/businesses/by-slug/${encodeURIComponent(slug)}`,
+      { method: "GET", auth: false },
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
   }
+}
 
-  // Ran out of budget before running out of rows: report "not found" rather
-  // than pretending the catalogue ended.
-  return null;
+/* ---------------------------------------------------------- owner calls */
+
+/** GET /businesses/owner/mine - the caller's listings, any status. */
+export function getMyBusinesses(): Promise<BusinessOwnerItem[]> {
+  return apiFetch<BusinessOwnerItem[]>("/businesses/owner/mine", {
+    method: "GET",
+  });
+}
+
+/**
+ * GET /businesses/{id} - a listing the caller owns, for the edit form.
+ *
+ * Throws ApiError 403 when the listing belongs to somebody else and 404 when
+ * it does not exist; callers should distinguish the two.
+ */
+export function getMyBusiness(businessId: number): Promise<BusinessDetail> {
+  return apiFetch<BusinessDetail>(`/businesses/${businessId}`, { method: "GET" });
+}
+
+/** POST /businesses - create a listing, owned by the caller and pending. */
+export function createBusiness(payload: BusinessCreate): Promise<BusinessDetail> {
+  return apiFetch<BusinessDetail>("/businesses", { method: "POST", body: payload });
+}
+
+/**
+ * PATCH /businesses/{id} - partial update.
+ *
+ * Note the server sends an approved listing back to `pending` when its content
+ * changes, so the caller should expect the status to move.
+ */
+export function updateBusiness(
+  businessId: number,
+  payload: BusinessUpdate,
+): Promise<BusinessDetail> {
+  return apiFetch<BusinessDetail>(`/businesses/${businessId}`, {
+    method: "PATCH",
+    body: payload,
+  });
 }

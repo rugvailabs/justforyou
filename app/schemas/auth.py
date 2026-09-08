@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models.user import PreferredContactMethod
+from app.models.user import PreferredContactMethod, UserRole
 
 
 class SignupRequest(BaseModel):
@@ -16,6 +17,11 @@ class SignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
     phone: str | None = Field(default=None, max_length=32)
     preferred_contact_method: PreferredContactMethod = PreferredContactMethod.email
+    # Self-service signup for people listing a business. Deliberately typed as
+    # a two-value literal rather than UserRole: accepting the full enum here
+    # would let anyone mint themselves an admin account by posting
+    # {"role": "admin"} to a public endpoint.
+    role: Literal[UserRole.customer, UserRole.business_owner] = UserRole.customer
 
 
 class LoginRequest(BaseModel):
@@ -37,4 +43,5 @@ class UserResponse(BaseModel):
     phone: str | None
     preferred_contact_method: PreferredContactMethod
     is_admin: bool
+    role: UserRole
     created_at: datetime

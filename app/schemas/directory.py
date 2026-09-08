@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+
+from app.models.business import BusinessStatus
 
 
 class BusinessSort(str, enum.Enum):
@@ -70,3 +75,92 @@ class SearchResponse(BaseModel):
     total_pages: int
     has_next: bool
     has_prev: bool
+
+
+class BusinessOwnerItem(BaseModel):
+    """A listing as its owner sees it - includes the moderation status."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    slug: str
+    category_id: int
+    status: BusinessStatus
+    city: str
+    province: str
+    address: str | None
+    rating: float | None
+    review_count: int
+    is_active: bool
+    verified: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class BusinessDetail(BusinessOwnerItem):
+    """Everything the edit form needs to round-trip a listing."""
+
+    description: str | None
+    postal_code: str | None
+    latitude: float | None
+    longitude: float | None
+    phone: str | None
+    whatsapp: str | None
+    email: str | None
+    website: str | None
+    price_range: str | None
+    tags: list[str] | None
+    opening_hours: dict[str, Any] | None
+    owner_id: int | None
+    category_slug: str | None = None
+    category_name: str | None = None
+
+
+class BusinessCreate(BaseModel):
+    """Owner-supplied fields for a new listing.
+
+    Deliberately omits status, owner_id, rating, review_count and verified:
+    those are set by the server. Accepting them from the client would let an
+    owner self-approve or invent a rating.
+    """
+
+    name: str = Field(min_length=1, max_length=255)
+    category_id: int
+    description: str | None = Field(default=None, max_length=5000)
+    address: str | None = Field(default=None, max_length=255)
+    city: str = Field(min_length=1, max_length=128)
+    province: str = Field(default="ON", min_length=2, max_length=2)
+    postal_code: str | None = Field(default=None, max_length=16)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    phone: str | None = Field(default=None, max_length=32)
+    whatsapp: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=320)
+    website: HttpUrl | None = None
+    price_range: str | None = Field(default=None, max_length=8)
+    tags: list[str] | None = None
+    opening_hours: dict[str, Any] | None = None
+
+
+class BusinessUpdate(BaseModel):
+    """PATCH payload. Every field optional; omitted fields are left alone."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    category_id: int | None = None
+    description: str | None = Field(default=None, max_length=5000)
+    address: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, min_length=1, max_length=128)
+    province: str | None = Field(default=None, min_length=2, max_length=2)
+    postal_code: str | None = Field(default=None, max_length=16)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    phone: str | None = Field(default=None, max_length=32)
+    whatsapp: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=320)
+    website: HttpUrl | None = None
+    price_range: str | None = Field(default=None, max_length=8)
+    tags: list[str] | None = None
+    opening_hours: dict[str, Any] | None = None
+    # The owner may pause a listing, but cannot change its moderation status.
+    is_active: bool | None = None

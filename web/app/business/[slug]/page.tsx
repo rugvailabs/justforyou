@@ -69,12 +69,14 @@ export default async function BusinessPage({
         <Link href="/" className="text-lg font-semibold">
           JustDial CA
         </Link>
-        <Link
-          href={`/search?category=${encodeURIComponent(business.category_slug)}`}
-          className="text-sm underline"
-        >
-          More in {business.category_name}
-        </Link>
+        {business.category_slug !== null ? (
+          <Link
+            href={`/search?category=${encodeURIComponent(business.category_slug)}`}
+            className="text-sm underline"
+          >
+            More in {business.category_name}
+          </Link>
+        ) : null}
       </header>
 
       {/* --- identity ---------------------------------------------------- */}
@@ -86,12 +88,16 @@ export default async function BusinessPage({
           {business.verified ? <Badge tone="success">✓ Verified</Badge> : null}
         </div>
         <p className="mt-1 text-slate-600">
-          <Link
-            href={`/search?category=${encodeURIComponent(business.category_slug)}`}
-            className="underline"
-          >
-            {business.category_name}
-          </Link>
+          {business.category_slug !== null ? (
+            <Link
+              href={`/search?category=${encodeURIComponent(business.category_slug)}`}
+              className="underline"
+            >
+              {business.category_name}
+            </Link>
+          ) : (
+            business.category_name
+          )}
           {address ? ` · ${business.city}, ${business.province}` : ""}
         </p>
         <div className="mt-2">
@@ -201,7 +207,9 @@ export default async function BusinessPage({
               </div>
               <div>
                 <dt className="font-medium text-slate-700">Category</dt>
-                <dd className="text-slate-600">{business.category_name}</dd>
+                <dd className="text-slate-600">
+                  {business.category_name ?? "Uncategorised"}
+                </dd>
               </div>
             </dl>
           </Card>

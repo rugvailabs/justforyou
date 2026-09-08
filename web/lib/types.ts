@@ -40,6 +40,11 @@ export interface SignupRequest {
   phone?: string | null;
   /** Defaults to "email" server-side. */
   preferred_contact_method?: PreferredContactMethod;
+  /**
+   * Self-service signup role. The API accepts only these two - "admin" is
+   * rejected with a 422, so signup cannot be used to escalate.
+   */
+  role?: "customer" | "business_owner";
 }
 
 /** POST /api/v1/login */
@@ -69,8 +74,10 @@ export interface UserResponse {
   email: string;
   phone: string | null;
   preferred_contact_method: PreferredContactMethod;
-  /** The only role signal the API exposes. It is NOT a JWT claim. */
+  /** Admin flag. Still the authority for the submission review console. */
   is_admin: boolean;
+  /** Broader role. Neither this nor is_admin is a JWT claim - both come from /me. */
+  role: UserRole;
   /** ISO-8601 timestamp. */
   created_at: string;
 }
@@ -198,3 +205,80 @@ export interface BusinessSearchParams {
   /** 1-50, default 20. */
   page_size?: number;
 }
+
+/* ------------------------------------------------------- owner dashboard */
+
+/** Moderation state. Only `approved` is publicly visible. */
+export type BusinessStatus = "pending" | "approved" | "rejected" | "suspended";
+
+/**
+ * What a user may do beyond acting for themselves.
+ *
+ * Coexists with `is_admin` on UserResponse rather than replacing it: the
+ * submission review console still gates on that boolean.
+ */
+export type UserRole = "customer" | "business_owner" | "admin";
+
+/** A listing as its owner sees it - GET /businesses/owner/mine */
+export interface BusinessOwnerItem {
+  id: number;
+  name: string;
+  slug: string;
+  category_id: number;
+  status: BusinessStatus;
+  city: string;
+  province: string;
+  address: string | null;
+  rating: number | null;
+  review_count: number;
+  is_active: boolean;
+  verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Full listing - GET /businesses/{id} (owner) and /businesses/by-slug/{slug}. */
+export interface BusinessDetail extends BusinessOwnerItem {
+  description: string | null;
+  postal_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  price_range: string | null;
+  tags: string[] | null;
+  opening_hours: Record<string, [string, string][]> | null;
+  owner_id: number | null;
+  category_slug: string | null;
+  category_name: string | null;
+}
+
+/**
+ * POST /businesses body.
+ *
+ * No status, owner_id, rating or verified: the server assigns those, and
+ * accepting them from a client would be self-approval.
+ */
+export interface BusinessCreate {
+  name: string;
+  category_id: number;
+  description?: string | null;
+  address?: string | null;
+  city: string;
+  province?: string;
+  postal_code?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  website?: string | null;
+  price_range?: string | null;
+  tags?: string[] | null;
+  opening_hours?: Record<string, [string, string][]> | null;
+}
+
+/** PATCH /businesses/{id} body. Omitted fields are left alone. */
+export type BusinessUpdate = Partial<BusinessCreate> & { is_active?: boolean };
