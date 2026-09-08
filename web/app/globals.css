@@ -1,3 +1,148 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/**
+ * Design tokens.
+ *
+ * Every colour in the app resolves through one of these variables. Nothing
+ * downstream writes a hex value: a component that hardcodes #0f766e is a
+ * component that will not follow a rebrand or a theme switch, and there is no
+ * way to find it later except by eye.
+ *
+ * Values are stored as raw HSL channels rather than complete colours so
+ * Tailwind can compose them with an alpha ("bg-brand/10"). That is the only
+ * reason for the unusual format.
+ */
+
+@layer base {
+  :root {
+    /* --- brand: teal ---------------------------------------------------
+     * Teal rather than the blue every directory uses.
+     *
+     * 600 is the brand colour but carries white text at only 3.65:1, so the
+     * primary button fills with 700 (5.55:1) and 600 is reserved for large
+     * areas and decoration. Measured, not eyeballed.
+     */
+    --brand-50: 166 76% 97%;
+    --brand-100: 167 85% 89%;
+    --brand-200: 168 84% 78%;
+    --brand-300: 171 77% 64%;
+    --brand-400: 172 66% 50%;
+    --brand-500: 173 80% 40%;
+    --brand-600: 175 84% 32%;
+    --brand-700: 175 77% 26%;
+    --brand-800: 176 69% 22%;
+    --brand-900: 176 61% 19%;
+    --brand-950: 179 84% 10%;
+
+    /* --- neutrals ------------------------------------------------------
+     * Slightly cool, biased toward the brand hue: a pure grey next to teal
+     * reads as dirty.
+     */
+    --canvas: 180 20% 99%;
+    --surface: 0 0% 100%;
+    --surface-muted: 180 14% 97%;
+    --border: 180 12% 90%;
+    --border-strong: 180 10% 82%;
+    --ink: 190 30% 12%;
+    --ink-muted: 195 12% 34%;
+    --ink-subtle: 195 10% 45%;
+    /* Below the contrast floor on purpose: decoration, disabled controls and
+       icons only. Never a text colour - use ink-subtle for that. */
+    --ink-faint: 195 12% 62%;
+    --ink-inverse: 0 0% 100%;
+
+    /* --- semantic ------------------------------------------------------
+     * Named for what they mean, not what they look like. "Open" is a state a
+     * business is in; that it happens to be green is an implementation detail
+     * of this theme.
+     */
+    --rating: 38 92% 50%;
+    --rating-ink: 26 83% 26%;
+    /* Each of these is the text colour inside its own tinted badge, so it is
+       darkened to the point where 11px type clears 4.5:1 on white - which is
+       darker than the colour looks like it wants to be. */
+    --open: 152 60% 32%;
+    --open-bg: 152 60% 96%;
+    --closed: 0 63% 45%;
+    --closed-bg: 0 78% 97%;
+    --sponsored: 43 96% 30%;
+    --sponsored-bg: 48 100% 96%;
+    --verified: 175 77% 26%;
+    --verified-bg: 166 76% 96%;
+    --danger: 0 72% 45%;
+    --danger-bg: 0 78% 97%;
+    --warning: 32 85% 36%;
+    --warning-bg: 44 96% 95%;
+    --success: 152 60% 32%;
+    --success-bg: 152 60% 96%;
+
+    /* --- focus ---------------------------------------------------------
+     * One ring colour everywhere. A focus indicator that changes between
+     * surfaces is a focus indicator people stop recognising.
+     */
+    --ring: 175 84% 32%;
+
+    /* --- radii ---------------------------------------------------------- */
+    --radius-card: 8px;
+    --radius-input: 8px;
+    --radius-pill: 999px;
+  }
+
+  .dark {
+    --canvas: 195 30% 8%;
+    --surface: 195 26% 11%;
+    --surface-muted: 195 22% 15%;
+    --border: 195 18% 20%;
+    --border-strong: 195 16% 28%;
+    --ink: 180 20% 96%;
+    --ink-muted: 190 12% 76%;
+    --ink-subtle: 190 10% 64%;
+    --ink-faint: 190 10% 48%;
+    --ink-inverse: 195 30% 8%;
+
+    /* Lifted so they hold contrast on a dark ground; the light values would
+       sit at roughly 2:1 here. */
+    --rating: 38 95% 60%;
+    --rating-ink: 38 95% 82%;
+    --open: 152 55% 55%;
+    --open-bg: 152 40% 14%;
+    --closed: 0 70% 66%;
+    --closed-bg: 0 40% 15%;
+    --sponsored: 43 90% 62%;
+    --sponsored-bg: 43 40% 14%;
+    --verified: 172 66% 55%;
+    --verified-bg: 175 40% 14%;
+    --danger: 0 75% 68%;
+    --danger-bg: 0 40% 15%;
+    --warning: 38 90% 62%;
+    --warning-bg: 36 40% 14%;
+    --success: 152 55% 55%;
+    --success-bg: 152 40% 14%;
+
+    --ring: 172 66% 50%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--canvas));
+    color: hsl(var(--ink));
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Ratings, review counts, prices and distances line up in columns across
+     cards, which only works if the digits are the same width. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Keyboard focus is unmistakable; a mouse click paints nothing. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
