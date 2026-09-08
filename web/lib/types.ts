@@ -490,3 +490,60 @@ export interface AdminReviewItem {
   author_email: string;
   created_at: string;
 }
+
+/* ------------------------------------------------------- verification (KYC) */
+
+/** Where a listing's KYC submission stands. */
+export type VerificationStatus = "pending" | "verified" | "rejected";
+
+/**
+ * GET/POST /businesses/{id}/verification.
+ *
+ * Separate from the listing's own moderation `status`: one says a human read
+ * the copy, the other says a human checked the business exists. A listing needs
+ * both before it is publicly visible - see app/core/visibility.py.
+ */
+export interface BusinessVerification {
+  id: number;
+  business_id: number;
+  email: string;
+  mobile_number: string;
+  license_number: string | null;
+  license_document_url: string | null;
+  gst_number: string | null;
+  gst_document_url: string | null;
+  status: VerificationStatus;
+  /** Written by the reviewer, and shown to the owner. */
+  rejection_reason: string | null;
+  reviewed_at: string | null;
+  submitted_at: string;
+  updated_at: string;
+}
+
+/**
+ * POST /businesses/{id}/verification body.
+ *
+ * Licence and GST are optional: not every trade is licensed, and a business
+ * under the small-supplier threshold has no GST number. What is missing is the
+ * reviewer's judgement, not a validation error.
+ */
+export interface VerificationSubmit {
+  email: string;
+  mobile_number: string;
+  license_number?: string | null;
+  license_document_url?: string | null;
+  gst_number?: string | null;
+  gst_document_url?: string | null;
+}
+
+/** GET /uploads/presign - where to PUT one document, and what to call it after. */
+export interface PresignResponse {
+  upload_url: string;
+  /** The stable s3:// address that goes on the verification record. */
+  document_url: string;
+  key: string;
+  expires_in: number;
+  method: string;
+  /** True when storage is unconfigured and these URLs are placeholders. */
+  stub: boolean;
+}

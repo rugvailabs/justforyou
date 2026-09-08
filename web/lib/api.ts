@@ -28,6 +28,7 @@ import type {
   BusinessSearchParams,
   BusinessStatus,
   BusinessUpdate,
+  BusinessVerification,
   Category,
   ChatMessage,
   Conversation,
@@ -40,6 +41,7 @@ import type {
   ModerationQueueItem,
   ModerationStats,
   OtpRequestAccepted,
+  PresignResponse,
   ProfileUpdate,
   LoginRequest,
   SearchResponse,
@@ -47,6 +49,7 @@ import type {
   TokenResponse,
   UserResponse,
   ValidationErrorItem,
+  VerificationSubmit,
 } from "@/lib/types";
 
 /** Trailing slash trimmed so `${API_BASE_URL}${path}` never doubles up. */
@@ -728,3 +731,63 @@ export const rejectListing = (id: number, reason: string) =>
   moderateBusiness(id, "reject", reason);
 export const suspendListing = (id: number, reason: string) =>
   moderateBusiness(id, "suspend", reason);
+
+/* -------------------------------------------------- verification (KYC) */
+
+/**
+ * GET /businesses/{id}/verification - where this listing's KYC stands.
+ *
+ * Returns null on 404 rather than throwing, because "never submitted" is a
+ * normal state the dashboard renders differently from "pending", not an error.
+ */
+export async function getVerification(
+  businessId: number,
+): Promise<BusinessVerification | null> {
+  try {
+    return await apiFetch<BusinessVerification>(
+      `/businesses/${businessId}/verification`,
+      { method: "GET" },
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/**
+ * POST /businesses/{id}/verification - submit, or resubmit after a rejection.
+ *
+ * An upsert server-side: one listing has one KYC record, and resubmitting
+ * sends it back to `pending` and clears the previous rejection. Note that
+ * resubmitting a *verified* listing also sends it back for review, which
+ * takes it out of public search until someone re-checks it.
+ */
+export function submitVerification(
+  businessId: number,
+  payload: VerificationSubmit,
+): Promise<BusinessVerification> {
+  return apiFetch<BusinessVerification>(
+    `/businesses/${businessId}/verification`,
+    { method: "POST", body: payload },
+  );
+}
+
+/**
+ * GET /uploads/presign - a short-lived URL to PUT one KYC document to.
+ *
+ * Owner-scoped: the backend derives the object key from a listing the caller
+ * owns, so a crafted filename cannot write outside that listing's prefix.
+ */
+export function presignDocument(params: {
+  business_id: number;
+  filename: string;
+  content_type: string;
+  purpose: string;
+}): Promise<PresignResponse> {
+  const qs = new URLSearchParams(
+    Object.entries(params).map(([key, value]) => [key, String(value)]),
+  );
+  return apiFetch<PresignResponse>(`/uploads/presign?${qs.toString()}`, {
+    method: "GET",
+  });
+}
