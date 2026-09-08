@@ -7,7 +7,7 @@
  * handler, so it is its own component rather than a prop on MapView - keeping
  * MapView free of form concerns means the search page can still reuse it.
  *
- * Defaults to downtown Toronto, which is where the seeded catalogue lives.
+ * Defaults to downtown Vancouver, which is where the seeded catalogue lives.
  */
 
 import "leaflet/dist/leaflet.css";
@@ -15,8 +15,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 
-/** Downtown Toronto - the seeded test area. */
-export const TORONTO: [number, number] = [43.6532, -79.3832];
+/** Downtown Vancouver - the seeded test area. */
+export const VANCOUVER: [number, number] = [49.2827, -123.1207];
 
 const pinIcon = L.divIcon({
   className: "",
@@ -54,7 +54,7 @@ export default function LocationPicker({
   const hasPoint = latitude !== null && longitude !== null;
   const centre: [number, number] = hasPoint
     ? [latitude as number, longitude as number]
-    : TORONTO;
+    : VANCOUVER;
 
   return (
     <div>

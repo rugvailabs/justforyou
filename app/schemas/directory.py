@@ -135,7 +135,7 @@ class BusinessCreate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     address: str | None = Field(default=None, max_length=255)
     city: str = Field(min_length=1, max_length=128)
-    province: str = Field(default="ON", min_length=2, max_length=2)
+    province: str = Field(default="BC", min_length=2, max_length=2)
     postal_code: str | None = Field(default=None, max_length=16)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)

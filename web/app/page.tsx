@@ -77,7 +77,7 @@ export default async function HomePage(): Promise<JSX.Element> {
 
       <section className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Find local businesses across the GTA
+          Find local businesses across Metro Vancouver
         </h1>
         <p className="mt-2 max-w-2xl text-slate-600">
           Search plumbers, dentists, restaurants and more. Filter by city and

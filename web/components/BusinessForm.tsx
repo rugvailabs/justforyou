@@ -76,8 +76,8 @@ export default function BusinessForm({
   const [email, setEmail] = useState(listing?.email ?? "");
   const [website, setWebsite] = useState(listing?.website ?? "");
   const [address, setAddress] = useState(listing?.address ?? "");
-  const [city, setCity] = useState(listing?.city ?? "Toronto");
-  const [province, setProvince] = useState(listing?.province ?? "ON");
+  const [city, setCity] = useState(listing?.city ?? "Vancouver");
+  const [province, setProvince] = useState(listing?.province ?? "BC");
   const [postalCode, setPostalCode] = useState(listing?.postal_code ?? "");
   const [priceRange, setPriceRange] = useState(listing?.price_range ?? "");
   const [latitude, setLatitude] = useState<number | null>(listing?.latitude ?? null);

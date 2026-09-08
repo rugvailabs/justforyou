@@ -92,7 +92,7 @@ export default function SearchFilters({
         <input
           type="text"
           defaultValue={searchParams.get("city") ?? ""}
-          placeholder="Toronto"
+          placeholder="Vancouver"
           // Commit on blur/Enter rather than per keystroke, so typing a city
           // does not push a history entry per character.
           onBlur={(e) => setParam("city", e.target.value.trim())}

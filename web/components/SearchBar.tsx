@@ -19,7 +19,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 
 /** Matches the seed data's centre of gravity. */
-const DEFAULT_CITY_PLACEHOLDER = "Toronto";
+const DEFAULT_CITY_PLACEHOLDER = "Vancouver";
 
 /** Radius applied to a "near me" search, in km. */
 const NEAR_ME_RADIUS_KM = 25;

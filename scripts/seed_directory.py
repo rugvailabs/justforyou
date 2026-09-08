@@ -1,14 +1,14 @@
-"""Directory seed data: categories and Toronto-area business listings.
+"""Directory seed data: categories and Vancouver-area business listings.
 
 Imported by scripts.seed so `python -m scripts.seed` populates everything.
 
 All business names, addresses, phone numbers and websites below are invented.
-They are shaped like real Toronto listings so the search, distance and rating
+They are shaped like real Vancouver listings so the search, distance and rating
 filters have something plausible to work on - they are not real businesses.
 
 Coordinates are real neighbourhood centroids, which is what makes the "near me"
-path testable: the reference point used in development is downtown Toronto at
-(43.65, -79.38).
+path testable: the reference point used in development is downtown Vancouver at
+(49.28, -123.12).
 """
 
 from __future__ import annotations
@@ -44,58 +44,58 @@ CATEGORIES: List[Tuple[str, str, str, int, str]] = [
 # the NULL-handling in ?min_rating and the rating sort is exercised.
 BUSINESSES = [
     # --- plumbers -----------------------------------------------------------
-    ("harbourfront-plumbing", "Harbourfront Plumbing", "plumbers", "Toronto", "412 Queens Quay W", "M5V 3A6", 43.6387, -79.3860, "+1-416-555-0101", "https://example.com/harbourfront-plumbing", 4.7, 218, True, "24-hour emergency plumbing and drain clearing across the downtown core."),
-    ("kensington-drain-works", "Kensington Drain Works", "plumbers", "Toronto", "88 Augusta Ave", "M5T 2K9", 43.6547, -79.4005, "+1-416-555-0102", None, 4.3, 96, True, "Drain snaking, camera inspection and backwater valve installation."),
-    ("leslieville-pipe-co", "Leslieville Pipe Co.", "plumbers", "Toronto", "1043 Queen St E", "M4M 1K4", 43.6626, -79.3306, "+1-416-555-0103", "https://example.com/leslieville-pipe", 4.1, 54, False, "Residential repiping and water heater replacement."),
-    ("north-york-plumbing-group", "North York Plumbing Group", "plumbers", "North York", "5150 Yonge St", "M2N 6L8", 43.7615, -79.4111, "+1-416-555-0104", None, 3.8, 41, False, "Condo and low-rise plumbing maintenance contracts."),
-    ("mississauga-flow-services", "Mississauga Flow Services", "plumbers", "Mississauga", "201 City Centre Dr", "L5B 2T4", 43.5890, -79.6441, "+1-905-555-0105", "https://example.com/msg-flow", 4.5, 132, True, "Sump pumps, backflow testing and basement waterproofing."),
+    ("coal-harbour-plumbing", "Coal Harbour Plumbing", "plumbers", "Vancouver", "1055 Canada Pl", "V6C 0C3", 49.2888, -123.1150, "+1-604-555-0101", "https://example.com/coal-harbour-plumbing", 4.7, 218, True, "24-hour emergency plumbing and drain clearing across the downtown peninsula."),
+    ("kitsilano-drain-works", "Kitsilano Drain Works", "plumbers", "Vancouver", "2088 W 4th Ave", "V6J 1M9", 49.2685, -123.1560, "+1-604-555-0102", None, 4.3, 96, True, "Drain snaking, camera inspection and backwater valve installation."),
+    ("commercial-drive-pipe-co", "Commercial Drive Pipe Co.", "plumbers", "Vancouver", "1721 Commercial Dr", "V5N 4A3", 49.2690, -123.0700, "+1-604-555-0103", "https://example.com/commercial-drive-pipe", 4.1, 54, False, "Residential repiping and hot water tank replacement."),
+    ("north-shore-plumbing-group", "North Shore Plumbing Group", "plumbers", "North Vancouver", "1450 Marine Dr", "V7P 1T7", 49.3245, -123.0870, "+1-604-555-0104", None, 3.8, 41, False, "Condo and low-rise plumbing maintenance contracts."),
+    ("richmond-flow-services", "Richmond Flow Services", "plumbers", "Richmond", "6060 Minoru Blvd", "V6Y 2V7", 49.1666, -123.1336, "+1-604-555-0105", "https://example.com/richmond-flow", 4.5, 132, True, "Sump pumps, backflow testing and crawlspace waterproofing."),
 
     # --- electricians -------------------------------------------------------
-    ("queen-west-electric", "Queen West Electric", "electricians", "Toronto", "755 Queen St W", "M6J 1G1", 43.6465, -79.4021, "+1-416-555-0111", "https://example.com/queen-west-electric", 4.8, 305, True, "ESA-certified panel upgrades, knob-and-tube replacement and EV chargers."),
-    ("liberty-village-electrical", "Liberty Village Electrical", "electricians", "Toronto", "171 East Liberty St", "M6K 3P6", 43.6379, -79.4200, "+1-416-555-0112", None, 4.4, 87, True, "Condo lighting design and smart-home wiring."),
-    ("scarborough-current-co", "Scarborough Current Co.", "electricians", "Scarborough", "300 Borough Dr", "M1P 4P5", 43.7764, -79.2318, "+1-416-555-0113", None, 3.9, 63, False, "Residential rewiring and generator hookups."),
-    ("etobicoke-voltage", "Etobicoke Voltage", "electricians", "Etobicoke", "5230 Dundas St W", "M9B 1A8", 43.6205, -79.5132, "+1-416-555-0114", "https://example.com/etobicoke-voltage", None, 0, False, "New electrical contractor serving south Etobicoke."),
+    ("gastown-electric", "Gastown Electric", "electricians", "Vancouver", "1 Water St", "V6B 1A1", 49.2846, -123.1065, "+1-604-555-0111", "https://example.com/gastown-electric", 4.8, 305, True, "Panel upgrades, knob-and-tube replacement and EV chargers."),
+    ("yaletown-electrical", "Yaletown Electrical", "electricians", "Vancouver", "1155 Mainland St", "V6B 5P2", 49.2745, -123.1210, "+1-604-555-0112", None, 4.4, 87, True, "Condo lighting design and smart-home wiring."),
+    ("surrey-current-co", "Surrey Current Co.", "electricians", "Surrey", "10250 City Pkwy", "V3T 4Z6", 49.1913, -122.8490, "+1-604-555-0113", None, 3.9, 63, False, "Residential rewiring and generator hookups."),
+    ("burnaby-voltage", "Burnaby Voltage", "electricians", "Burnaby", "4700 Kingsway", "V5H 4M1", 49.2260, -122.9990, "+1-604-555-0114", "https://example.com/burnaby-voltage", None, 0, False, "New electrical contractor serving south Burnaby."),
 
     # --- restaurants --------------------------------------------------------
-    ("the-annex-kitchen", "The Annex Kitchen", "restaurants", "Toronto", "512 Bloor St W", "M5S 1Y3", 43.6647, -79.4111, "+1-416-555-0121", "https://example.com/annex-kitchen", 4.6, 892, True, "Seasonal Ontario produce, open kitchen, walk-ins welcome."),
-    ("kensington-taco-bar", "Kensington Taco Bar", "restaurants", "Toronto", "204 Augusta Ave", "M5T 2L4", 43.6552, -79.4020, "+1-416-555-0122", None, 4.5, 640, True, "Counter-service tacos and aguas frescas in the market."),
-    ("distillery-pasta-house", "Distillery Pasta House", "restaurants", "Toronto", "55 Mill St", "M5A 3C4", 43.6503, -79.3596, "+1-416-555-0123", "https://example.com/distillery-pasta", 4.2, 411, True, "Hand-rolled pasta in the Distillery District."),
-    ("beaches-brunch-room", "Beaches Brunch Room", "restaurants", "Toronto", "1962 Queen St E", "M4L 1H8", 43.6710, -79.2930, "+1-416-555-0124", None, 4.0, 228, False, "All-day breakfast a block from the boardwalk."),
-    ("markham-dumpling-house", "Markham Dumpling House", "restaurants", "Markham", "3255 Highway 7", "L3R 3P9", 43.8561, -79.3370, "+1-905-555-0125", None, 4.7, 1204, True, "Hand-folded dumplings and hot-and-sour soup."),
-    ("yorkville-steak-social", "Yorkville Steak Social", "restaurants", "Toronto", "128 Cumberland St", "M5R 1A6", 43.6709, -79.3933, "+1-416-555-0126", "https://example.com/yorkville-steak", 3.6, 176, False, "Dry-aged steaks and a long cocktail list."),
+    ("the-mount-pleasant-kitchen", "The Mount Pleasant Kitchen", "restaurants", "Vancouver", "2410 Main St", "V5T 3E2", 49.2640, -123.1000, "+1-604-555-0121", "https://example.com/mount-pleasant-kitchen", 4.6, 892, True, "Seasonal BC produce, open kitchen, walk-ins welcome."),
+    ("gastown-taco-bar", "Gastown Taco Bar", "restaurants", "Vancouver", "212 Carrall St", "V6B 2J1", 49.2828, -123.1040, "+1-604-555-0122", None, 4.5, 640, True, "Counter-service tacos and aguas frescas off Maple Tree Square."),
+    ("yaletown-pasta-house", "Yaletown Pasta House", "restaurants", "Vancouver", "1130 Hamilton St", "V6B 5P6", 49.2750, -123.1215, "+1-604-555-0123", "https://example.com/yaletown-pasta", 4.2, 411, True, "Hand-rolled pasta in a converted warehouse."),
+    ("kits-beach-brunch-room", "Kits Beach Brunch Room", "restaurants", "Vancouver", "1305 Arbutus St", "V6J 5N2", 49.2720, -123.1530, "+1-604-555-0124", None, 4.0, 228, False, "All-day breakfast a block from the seawall."),
+    ("richmond-dumpling-house", "Richmond Dumpling House", "restaurants", "Richmond", "8181 Cambie Rd", "V6X 3X9", 49.1830, -123.1160, "+1-604-555-0125", None, 4.7, 1204, True, "Hand-folded dumplings and hot-and-sour soup."),
+    ("west-end-steak-social", "West End Steak Social", "restaurants", "Vancouver", "1216 Robson St", "V6E 1C1", 49.2860, -123.1290, "+1-604-555-0126", "https://example.com/west-end-steak", 3.6, 176, False, "Dry-aged steaks and a long cocktail list."),
 
     # --- dentists -----------------------------------------------------------
-    ("bay-street-dental", "Bay Street Dental", "dentists", "Toronto", "150 Bay St", "M5J 2X9", 43.6452, -79.3782, "+1-416-555-0131", "https://example.com/bay-street-dental", 4.9, 512, True, "Downtown practice with evening hours for office workers."),
-    ("danforth-family-dentistry", "Danforth Family Dentistry", "dentists", "Toronto", "1420 Danforth Ave", "M4J 1N4", 43.6820, -79.3260, "+1-416-555-0132", None, 4.4, 198, True, "Family dentistry, hygiene and Invisalign."),
-    ("north-york-smile-studio", "North York Smile Studio", "dentists", "North York", "4841 Yonge St", "M2N 5X2", 43.7601, -79.4108, "+1-416-555-0133", None, 4.1, 121, False, "Cosmetic dentistry and whitening."),
+    ("burrard-street-dental", "Burrard Street Dental", "dentists", "Vancouver", "1050 Burrard St", "V6Z 2S3", 49.2790, -123.1290, "+1-604-555-0131", "https://example.com/burrard-street-dental", 4.9, 512, True, "Downtown practice with evening hours for office workers."),
+    ("commercial-drive-family-dentistry", "Commercial Drive Family Dentistry", "dentists", "Vancouver", "1580 Commercial Dr", "V5L 3Y2", 49.2700, -123.0700, "+1-604-555-0132", None, 4.4, 198, True, "Family dentistry, hygiene and Invisalign."),
+    ("north-shore-smile-studio", "North Shore Smile Studio", "dentists", "North Vancouver", "123 Lonsdale Ave", "V7M 2E6", 49.3200, -123.0724, "+1-604-555-0133", None, 4.1, 121, False, "Cosmetic dentistry and whitening."),
 
     # --- auto-repair --------------------------------------------------------
-    ("dupont-auto-works", "Dupont Auto Works", "auto-repair", "Toronto", "899 Dupont St", "M6G 1Z6", 43.6698, -79.4270, "+1-416-555-0141", "https://example.com/dupont-auto", 4.6, 340, True, "Independent mechanics for European and Japanese cars."),
-    ("scarborough-tire-centre", "Scarborough Tire Centre", "auto-repair", "Scarborough", "2201 Eglinton Ave E", "M1L 4S9", 43.7320, -79.2650, "+1-416-555-0142", None, 4.0, 156, False, "Tires, alignment and seasonal storage."),
-    ("etobicoke-collision-care", "Etobicoke Collision Care", "auto-repair", "Etobicoke", "1155 The Queensway", "M8Z 1P7", 43.6215, -79.5240, "+1-416-555-0143", None, 3.7, 88, False, "Insurance-approved collision and paint work."),
+    ("clark-drive-auto-works", "Clark Drive Auto Works", "auto-repair", "Vancouver", "1290 Clark Dr", "V5L 3K7", 49.2700, -123.0770, "+1-604-555-0141", "https://example.com/clark-drive-auto", 4.6, 340, True, "Independent mechanics for European and Japanese cars."),
+    ("surrey-tire-centre", "Surrey Tire Centre", "auto-repair", "Surrey", "13450 104 Ave", "V3T 1V8", 49.1900, -122.8460, "+1-604-555-0142", None, 4.0, 156, False, "Tires, alignment and seasonal storage."),
+    ("burnaby-collision-care", "Burnaby Collision Care", "auto-repair", "Burnaby", "4180 Still Creek Dr", "V5C 6C6", 49.2610, -122.9950, "+1-604-555-0143", None, 3.7, 88, False, "Insurance-approved collision and paint work."),
 
     # --- gyms ---------------------------------------------------------------
-    ("king-west-strength", "King West Strength", "gyms", "Toronto", "600 King St W", "M5V 1M3", 43.6444, -79.4008, "+1-416-555-0151", "https://example.com/king-west-strength", 4.8, 421, True, "Barbell-focused gym with coaching and open gym hours."),
-    ("riverdale-yoga-loft", "Riverdale Yoga Loft", "gyms", "Toronto", "782 Broadview Ave", "M4K 2P7", 43.6770, -79.3585, "+1-416-555-0152", None, 4.5, 210, True, "Vinyasa, yin and beginner series."),
-    ("mississauga-fitness-hub", "Mississauga Fitness Hub", "gyms", "Mississauga", "100 City Centre Dr", "L5B 2C9", 43.5930, -79.6420, "+1-905-555-0153", None, 3.9, 97, False, "24-hour access gym with cardio and free weights."),
+    ("yaletown-strength", "Yaletown Strength", "gyms", "Vancouver", "1010 Mainland St", "V6B 2T4", 49.2757, -123.1195, "+1-604-555-0151", "https://example.com/yaletown-strength", 4.8, 421, True, "Barbell-focused gym with coaching and open gym hours."),
+    ("kitsilano-yoga-loft", "Kitsilano Yoga Loft", "gyms", "Vancouver", "2233 W Broadway", "V6K 2E4", 49.2640, -123.1580, "+1-604-555-0152", None, 4.5, 210, True, "Vinyasa, yin and beginner series."),
+    ("metrotown-fitness-hub", "Metrotown Fitness Hub", "gyms", "Burnaby", "4720 Kingsway", "V5H 4N2", 49.2265, -122.9985, "+1-604-555-0153", None, 3.9, 97, False, "24-hour access gym with cardio and free weights."),
 
     # --- salons -------------------------------------------------------------
-    ("ossington-hair-atelier", "Ossington Hair Atelier", "salons", "Toronto", "88 Ossington Ave", "M6J 2Y7", 43.6470, -79.4200, "+1-416-555-0161", "https://example.com/ossington-hair", 4.7, 383, True, "Cuts, colour and balayage."),
-    ("yorkville-skin-spa", "Yorkville Skin Spa", "salons", "Toronto", "99 Yorkville Ave", "M5R 3K5", 43.6712, -79.3940, "+1-416-555-0162", None, 4.3, 245, True, "Facials, peels and laser treatments."),
-    ("north-york-nail-bar", "North York Nail Bar", "salons", "North York", "1800 Sheppard Ave E", "M2J 5A7", 43.7750, -79.3450, "+1-416-555-0163", None, 3.5, 74, False, "Manicures, pedicures and gel extensions."),
+    ("main-street-hair-atelier", "Main Street Hair Atelier", "salons", "Vancouver", "3610 Main St", "V5V 3N4", 49.2520, -123.1010, "+1-604-555-0161", "https://example.com/main-street-hair", 4.7, 383, True, "Cuts, colour and balayage."),
+    ("robson-skin-spa", "Robson Skin Spa", "salons", "Vancouver", "1080 Robson St", "V6E 1A8", 49.2845, -123.1250, "+1-604-555-0162", None, 4.3, 245, True, "Facials, peels and laser treatments."),
+    ("lougheed-nail-bar", "Lougheed Nail Bar", "salons", "Burnaby", "9855 Austin Ave", "V3J 1N4", 49.2500, -122.8960, "+1-604-555-0163", None, 3.5, 74, False, "Manicures, pedicures and gel extensions."),
 
     # --- movers -------------------------------------------------------------
-    ("six-city-movers", "Six City Movers", "movers", "Toronto", "222 Spadina Ave", "M5T 3B3", 43.6500, -79.3970, "+1-416-555-0171", "https://example.com/six-city-movers", 4.4, 289, True, "Local moves, packing services and short-term storage."),
-    ("gta-storage-and-haul", "GTA Storage & Haul", "movers", "Etobicoke", "20 Carlingview Dr", "M9W 5E8", 43.6900, -79.5800, "+1-416-555-0172", None, 3.8, 112, False, "Heated storage units and junk removal."),
+    ("lower-mainland-movers", "Lower Mainland Movers", "movers", "Vancouver", "350 W Georgia St", "V6B 6B1", 49.2800, -123.1150, "+1-604-555-0171", "https://example.com/lower-mainland-movers", 4.4, 289, True, "Local moves, packing services and short-term storage."),
+    ("fraser-storage-and-haul", "Fraser Storage & Haul", "movers", "Burnaby", "3855 Henning Dr", "V5C 6N3", 49.2620, -122.9930, "+1-604-555-0172", None, 3.8, 112, False, "Heated storage units and junk removal."),
 
     # --- it-support ---------------------------------------------------------
-    ("bloor-tech-support", "Bloor Tech Support", "it-support", "Toronto", "365 Bloor St E", "M4W 3L4", 43.6710, -79.3790, "+1-416-555-0181", "https://example.com/bloor-tech", 4.6, 167, True, "Managed IT and helpdesk for small offices."),
-    ("scarborough-pc-clinic", "Scarborough PC Clinic", "it-support", "Scarborough", "1571 Sandhurst Cir", "M1V 1V2", 43.8050, -79.2790, "+1-416-555-0182", None, 4.2, 93, False, "Laptop repair, data recovery and virus removal."),
+    ("broadway-tech-support", "Broadway Tech Support", "it-support", "Vancouver", "555 W Broadway", "V5Z 1E9", 49.2630, -123.1160, "+1-604-555-0181", "https://example.com/broadway-tech", 4.6, 167, True, "Managed IT and helpdesk for small offices."),
+    ("richmond-pc-clinic", "Richmond PC Clinic", "it-support", "Richmond", "4380 No 3 Rd", "V6X 3V9", 49.1780, -123.1360, "+1-604-555-0182", None, 4.2, 93, False, "Laptop repair, data recovery and virus removal."),
 
     # --- legal --------------------------------------------------------------
-    ("adelaide-legal-partners", "Adelaide Legal Partners", "legal", "Toronto", "130 Adelaide St W", "M5H 3P5", 43.6495, -79.3830, "+1-416-555-0191", "https://example.com/adelaide-legal", 4.5, 143, True, "Real estate closings, wills and small-business law."),
-    ("dundas-immigration-law", "Dundas Immigration Law", "legal", "Toronto", "376 Dundas St W", "M5T 1G6", 43.6540, -79.3930, "+1-416-555-0192", None, 4.1, 88, True, "Express Entry, sponsorship and study permits."),
-    ("mississauga-family-law-office", "Mississauga Family Law Office", "legal", "Mississauga", "4 Robert Speck Pkwy", "L4Z 1S1", 43.5940, -79.6390, "+1-905-555-0193", None, None, 0, False, "Separation agreements and custody matters."),
+    ("howe-street-legal-partners", "Howe Street Legal Partners", "legal", "Vancouver", "700 W Georgia St", "V7Y 1K8", 49.2830, -123.1180, "+1-604-555-0191", "https://example.com/howe-street-legal", 4.5, 143, True, "Real estate closings, wills and small-business law."),
+    ("pender-immigration-law", "Pender Immigration Law", "legal", "Vancouver", "543 W Pender St", "V6B 1V4", 49.2830, -123.1120, "+1-604-555-0192", None, 4.1, 88, True, "Express Entry, sponsorship and study permits."),
+    ("new-west-family-law-office", "New West Family Law Office", "legal", "New Westminster", "620 Sixth St", "V3L 3C1", 49.2057, -122.9110, "+1-604-555-0193", None, None, 0, False, "Separation agreements and custody matters."),
 ]
 
 
@@ -147,7 +147,7 @@ def seed_businesses(db: Session) -> Tuple[int, int]:
                 name=name,
                 category_id=category.id,
                 city=city,
-                province="ON",
+                province="BC",
                 address=address,
                 postal_code=postal,
                 latitude=lat,
@@ -177,22 +177,22 @@ def seed_businesses(db: Session) -> Tuple[int, int]:
 # through the dashboard first. A low rating with a reply is also the realistic
 # case - it is the bad reviews owners answer.
 SEED_REVIEWS = [
-    ("harbourfront-plumbing", "Priya Raman", "priya.raman@example.ca", 5,
+    ("coal-harbour-plumbing", "Priya Raman", "priya.raman@example.ca", 5,
      "Came out at 11pm", "Burst pipe on a Sunday night and they were here within the hour. Fair price, no fuss.",
      None),
-    ("harbourfront-plumbing", "Tom Beckett", "tom.beckett@example.ca", 4,
+    ("coal-harbour-plumbing", "Tom Beckett", "tom.beckett@example.ca", 4,
      "Solid work, slow to quote", "The repair itself was excellent. Took three days to get the written quote though.",
      None),
-    ("harbourfront-plumbing", "Aisha Noor", "aisha.noor@example.ca", 3,
+    ("coal-harbour-plumbing", "Aisha Noor", "aisha.noor@example.ca", 3,
      "Fine, but pricey", "Job was done properly. Felt expensive for what turned out to be a 40 minute fix.",
      None),
-    ("harbourfront-plumbing", "Dev Verifier", "dev.verifier@example.ca", 2,
+    ("coal-harbour-plumbing", "Dev Verifier", "dev.verifier@example.ca", 2,
      "Missed the appointment window", "Booked 9-11am, plumber arrived at 3pm with no call ahead.",
      "Sorry about the window - that was a dispatch error on our side and we have credited the callout fee."),
-    ("queen-west-electric", "Marcus Webb", "marcus.webb@example.ca", 5,
+    ("gastown-electric", "Marcus Webb", "marcus.webb@example.ca", 5,
      "Panel upgrade done right", "ESA paperwork handled, site left spotless. Would use again.",
      None),
-    ("the-annex-kitchen", "Sofia Marino", "sofia.marino@example.ca", 4,
+    ("the-mount-pleasant-kitchen", "Sofia Marino", "sofia.marino@example.ca", 4,
      "Lovely room, tight tables", "Food was genuinely excellent. Bring a small bag, it is snug.",
      None),
 ]
@@ -297,7 +297,7 @@ SEED_OWNER_PASSWORD = "ownerpass123"
 
 # An existing approved listing handed to the seed owner. Chosen because it
 # already carries reviews, so the reviews page has something to reply to.
-SEED_OWNED_SLUG = "harbourfront-plumbing"
+SEED_OWNED_SLUG = "coal-harbour-plumbing"
 
 # A second listing, left pending, so the dashboard shows both states and the
 # "not visible until approved" path is visible without editing anything.
@@ -305,12 +305,12 @@ SEED_PENDING_LISTING = {
     "slug": "osei-drain-specialists",
     "name": "Osei Drain Specialists",
     "category_slug": "plumbers",
-    "city": "Toronto",
-    "address": "77 Carlaw Ave",
-    "postal_code": "M4M 2R6",
-    "latitude": 43.6595,
-    "longitude": -79.3402,
-    "phone": "+1-416-555-0199",
+    "city": "Vancouver",
+    "address": "250 Powell St",
+    "postal_code": "V6A 1G4",
+    "latitude": 49.2830,
+    "longitude": -123.0980,
+    "phone": "+1-604-555-0199",
     "description": "Second location, awaiting review. Drain camera work and root cutting.",
 }
 
@@ -320,9 +320,9 @@ SEED_PENDING_LISTING = {
 SEED_ENQUIRIES = [
     (EnquiryType.call_click, None, None, None),
     (EnquiryType.callback, "Kitchen sink backing up, can someone call me this afternoon?",
-     "Ruth Adeyemi", "+1-416-555-0311"),
+     "Ruth Adeyemi", "+1-604-555-0311"),
     (EnquiryType.quote, "Need a quote for replacing the main stack in a semi.",
-     "Callum Fraser", "+1-647-555-0122"),
+     "Callum Fraser", "+1-778-555-0122"),
 ]
 
 
@@ -373,7 +373,7 @@ def seed_ownership(db: Session, owner: User) -> Tuple[int, bool]:
                     category_id=category.id,
                     owner_id=owner.id,
                     city=spec["city"],
-                    province="ON",
+                    province="BC",
                     address=spec["address"],
                     postal_code=spec["postal_code"],
                     latitude=spec["latitude"],
