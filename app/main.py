@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.v1 import api_router
+from app.api.v1 import chat_ws
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.uploads import MAX_UPLOAD_BYTES, human_size
@@ -66,6 +67,8 @@ async def reject_oversized_uploads(request: Request, call_next):
 
 
 app.include_router(api_router)
+# Absolute paths (/ws/..., and the ticket endpoint), so not under api_router.
+app.include_router(chat_ws.router)
 
 
 @app.get("/health")

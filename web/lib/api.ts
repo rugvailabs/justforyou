@@ -660,3 +660,31 @@ export function verifyOtp(
     auth: false,
   });
 }
+
+/* -------------------------------------------------------- chat realtime */
+
+/** Spec-named alias for getConversations(). */
+export const listConversations = getConversations;
+
+/** Full history for a thread, oldest first. */
+export function getMessages(conversationId: number): Promise<ChatMessage[]> {
+  return getNewMessages(conversationId, 0);
+}
+
+/**
+ * POST /chat/ws-ticket - a 60-second, single-conversation credential for the
+ * WebSocket.
+ *
+ * The access token is deliberately NOT used for the socket: it lives in an
+ * httpOnly cookie so XSS cannot lift it, and a URL query string leaks into
+ * logs, proxies and referrers. A stolen ticket buys a minute of one
+ * conversation instead of the account.
+ */
+export function getWsTicket(
+  conversationId: number,
+): Promise<{ ticket: string; expires_in: number }> {
+  return apiFetch<{ ticket: string; expires_in: number }>(
+    `/chat/ws-ticket?conversation_id=${conversationId}`,
+    { method: "POST" },
+  );
+}

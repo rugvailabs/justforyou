@@ -36,6 +36,12 @@ export default async function ChatThreadPage({
     throw error;
   }
 
+  // The socket goes straight to the API origin - Next cannot usefully proxy a
+  // WebSocket - so derive ws:// from the same base URL the server calls.
+  const wsBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1")
+    .replace(/\/api\/v1\/?$/, "")
+    .replace(/^http/, "ws");
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <header className="mb-5">
@@ -65,6 +71,7 @@ export default async function ChatThreadPage({
       <ChatThread
         conversationId={conversation.id}
         initialMessages={conversation.messages}
+        wsBase={wsBase}
       />
     </div>
   );

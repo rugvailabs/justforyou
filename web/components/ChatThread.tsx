@@ -1,19 +1,21 @@
 "use client";
 
 /**
- * A chat thread with polling.
+ * A chat thread over a WebSocket.
  *
- * Delivery is polling rather than a socket: every POLL_MS the client asks for
- * messages after the highest id it holds, so each tick is a cheap indexed
- * lookup that usually returns an empty array. Ids are monotonic within a
- * thread, so this needs no clock agreement between client and server.
+ * Connection flow: ask our own route handler for a 60-second ticket, open the
+ * socket with it, then stream. The access token never touches the browser -
+ * it stays in the httpOnly cookie, and the ticket is scoped to one
+ * conversation so a leak is worth a minute of one thread.
  *
- * Three things keep polling from being a nuisance:
- *   - it stops while the tab is hidden, so a backgrounded thread costs nothing
- *   - a failed tick is swallowed and retried on the next one; a blip must not
- *     throw an error banner over a working conversation
- *   - the sent message is appended from the POST response, so your own message
- *     appears immediately rather than on the next tick
+ * The connection state is always visible. A chat that has quietly stopped
+ * delivering, while still accepting typing, is worse than one that plainly
+ * says it is offline - so "connecting", "reconnecting" and "offline" are all
+ * shown, and the composer is disabled when there is nowhere to send.
+ *
+ * Reconnection backs off (1s, 2s, 4s… capped) and gives up after a handful of
+ * tries rather than hammering a backend that is evidently down. History is
+ * never lost: it lives in the database and a reload re-reads it over REST.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,7 +23,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import type { ChatMessage } from "@/lib/types";
 
-const POLL_MS = 4000;
+type Status = "connecting" | "online" | "reconnecting" | "offline";
+
+const MAX_ATTEMPTS = 5;
+const BASE_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 15_000;
 
 function formatTime(iso: string): string {
   const date = new Date(iso);
@@ -30,117 +36,194 @@ function formatTime(iso: string): string {
     : date.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" });
 }
 
+const STATUS_TEXT: Record<Status, string> = {
+  connecting: "Connecting…",
+  online: "Connected",
+  reconnecting: "Reconnecting…",
+  offline: "Offline — messages cannot be sent",
+};
+
+const STATUS_STYLE: Record<Status, string> = {
+  connecting: "bg-slate-100 text-slate-600",
+  online: "bg-emerald-50 text-emerald-700",
+  reconnecting: "bg-amber-50 text-amber-800",
+  offline: "bg-red-50 text-red-700",
+};
+
 export default function ChatThread({
   conversationId,
   initialMessages,
+  wsBase,
 }: {
   conversationId: number;
   initialMessages: ChatMessage[];
+  /** e.g. ws://localhost:8000 - derived server-side from the API URL. */
+  wsBase: string;
 }): JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [status, setStatus] = useState<Status>("connecting");
   const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const socketRef = useRef<WebSocket | null>(null);
+  const attemptsRef = useRef(0);
+  const closedByUsRef = useRef(false);
   const endRef = useRef<HTMLDivElement | null>(null);
-  // Held in a ref as well as state: the poll closure must read the current
-  // high-water mark without being re-created on every message.
-  const lastIdRef = useRef<number>(
-    initialMessages.length > 0 ? initialMessages[initialMessages.length - 1].id : 0,
-  );
+  const [myUserId, setMyUserId] = useState<number | null>(null);
 
-  /** Append only ids we do not already hold - a retry must not duplicate. */
-  const merge = useCallback((incoming: ChatMessage[]) => {
-    if (incoming.length === 0) return;
-    setMessages((current) => {
-      const seen = new Set(current.map((m) => m.id));
-      const fresh = incoming.filter((m) => !seen.has(m.id));
-      if (fresh.length === 0) return current;
-      const next = [...current, ...fresh].sort((a, b) => a.id - b.id);
-      lastIdRef.current = next[next.length - 1].id;
-      return next;
-    });
+  /** Append unseen ids only, so a reconnect replaying nothing is harmless. */
+  const merge = useCallback((incoming: ChatMessage) => {
+    setMessages((current) =>
+      current.some((m) => m.id === incoming.id)
+        ? current
+        : [...current, incoming].sort((a, b) => a.id - b.id),
+    );
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const connect = useCallback(async (): Promise<void> => {
+    if (closedByUsRef.current) return;
 
-    async function poll(): Promise<void> {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const res = await fetch(
-          `/api/chat?conversation_id=${conversationId}&after_id=${lastIdRef.current}`,
-        );
-        if (!res.ok) return;
-        const body = (await res.json()) as { messages?: ChatMessage[] };
-        if (!cancelled && body.messages) merge(body.messages);
-      } catch {
-        // A dropped tick is not worth telling the user about; the next one
-        // will pick the messages up.
+    try {
+      const res = await fetch("/api/chat/ticket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      });
+      if (!res.ok) {
+        // No ticket means no socket. Say so rather than spinning.
+        setStatus("offline");
+        setError("Could not authorise the live connection.");
+        return;
       }
+      const { ticket } = (await res.json()) as { ticket: string };
+
+      const socket = new WebSocket(
+        `${wsBase}/ws/conversations/${conversationId}?ticket=${encodeURIComponent(ticket)}`,
+      );
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        attemptsRef.current = 0;
+        setStatus("online");
+        setError(null);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(String(event.data)) as
+            | { type: "ready"; user_id: number }
+            | (ChatMessage & { type: "message" });
+
+          if (payload.type === "ready") {
+            setMyUserId(payload.user_id);
+            return;
+          }
+          if (payload.type === "message") {
+            // `mine` is not on the wire - the socket broadcasts one payload to
+            // both sides - so it is derived from who this viewer is.
+            merge({ ...payload, mine: payload.sender_id === myUserIdRef.current });
+          }
+        } catch {
+          // A malformed frame is not worth tearing the connection down for.
+        }
+      };
+
+      socket.onclose = () => {
+        if (closedByUsRef.current) return;
+        socketRef.current = null;
+
+        attemptsRef.current += 1;
+        if (attemptsRef.current > MAX_ATTEMPTS) {
+          setStatus("offline");
+          setError(
+            "Lost the live connection. Reload the page to try again — nothing you sent has been lost.",
+          );
+          return;
+        }
+
+        setStatus("reconnecting");
+        const delay = Math.min(
+          BASE_BACKOFF_MS * 2 ** (attemptsRef.current - 1),
+          MAX_BACKOFF_MS,
+        );
+        window.setTimeout(() => void connect(), delay);
+      };
+
+      socket.onerror = () => {
+        // onclose always follows, and that is where retry is handled.
+      };
+    } catch {
+      setStatus("offline");
+      setError("Could not open the live connection.");
     }
+  }, [conversationId, merge, wsBase]);
 
-    const timer = window.setInterval(poll, POLL_MS);
-    // Catch up immediately when the tab comes back, rather than waiting a tick.
-    document.addEventListener("visibilitychange", poll);
+  // Read the current user id inside the socket callback without making the
+  // callback depend on it (which would tear the socket down on first message).
+  const myUserIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    myUserIdRef.current = myUserId;
+  }, [myUserId]);
+
+  useEffect(() => {
+    closedByUsRef.current = false;
+    void connect();
     return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", poll);
+      closedByUsRef.current = true;
+      socketRef.current?.close();
+      socketRef.current = null;
     };
-  }, [conversationId, merge]);
+  }, [connect]);
 
-  // Keep the newest message in view as the thread grows.
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const body = draft.trim();
-    if (!body || sending) return;
+    const socket = socketRef.current;
 
-    setError(null);
-    setSending(true);
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: conversationId, body }),
-      });
-      const payload: unknown = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        setError(
-          payload && typeof payload === "object" && "detail" in payload
-            ? String((payload as { detail: unknown }).detail)
-            : `Could not send that (HTTP ${res.status}).`,
-        );
-        return;
-      }
-
-      const sent = (payload as { message?: ChatMessage }).message;
-      if (sent) merge([sent]);
-      setDraft("");
-    } catch {
-      setError("Could not reach the server. Please try again.");
-    } finally {
-      setSending(false);
+    if (!body) return;
+    if (socket === null || socket.readyState !== WebSocket.OPEN) {
+      setError("Not connected — your message was not sent.");
+      return;
     }
+
+    socket.send(JSON.stringify({ body }));
+    // The server echoes it back to the room, so it is not appended here;
+    // that keeps one source of truth for ids and timestamps.
+    setDraft("");
+    setError(null);
   }
+
+  const canSend = status === "online";
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[status]}`}
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            className={`h-1.5 w-1.5 rounded-full ${
+              status === "online" ? "bg-emerald-500" : "bg-current"
+            }`}
+          />
+          {STATUS_TEXT[status]}
+        </span>
+      </div>
+
       <div
-        className="flex max-h-[60vh] min-h-[240px] flex-col gap-2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4"
+        className="flex max-h-[55vh] min-h-[240px] flex-col gap-2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4"
         role="log"
         aria-live="polite"
         aria-label="Conversation"
       >
         {messages.length === 0 ? (
-          <p className="m-auto text-sm text-slate-500">
-            No messages yet. Say hello.
-          </p>
+          <p className="m-auto text-sm text-slate-500">No messages yet. Say hello.</p>
         ) : (
           messages.map((message) => (
             <div
@@ -149,9 +232,7 @@ export default function ChatThread({
             >
               <div
                 className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                  message.mine
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-900"
+                  message.mine ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-900"
                 }`}
               >
                 {message.body}
@@ -179,12 +260,13 @@ export default function ChatThread({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             maxLength={4000}
-            placeholder="Write a message…"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            disabled={!canSend}
+            placeholder={canSend ? "Write a message…" : "Waiting for connection…"}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none disabled:bg-slate-50"
           />
         </label>
-        <Button type="submit" disabled={sending || !draft.trim()}>
-          {sending ? "Sending…" : "Send"}
+        <Button type="submit" disabled={!canSend || !draft.trim()}>
+          Send
         </Button>
       </form>
     </div>
