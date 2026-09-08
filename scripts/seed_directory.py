@@ -292,6 +292,11 @@ SEED_OWNER = {
     "name": "Nadia Osei",
     "email": "owner@example.ca",
     "role": UserRole.business_owner,
+    # The mobile app signs in with a code sent to a phone number, so an owner
+    # without one cannot reach their own dashboard there. phone_normalized is
+    # what /auth/otp/verify matches on; the formatted phone is only for display.
+    "phone": "+1-604-555-0166",
+    "phone_normalized": "16045550166",
 }
 SEED_OWNER_PASSWORD = "ownerpass123"
 
@@ -336,6 +341,12 @@ def seed_owner(db: Session) -> Tuple[User, bool]:
         # owner unable to reach the dashboard.
         if owner.role is not UserRole.business_owner:
             owner.role = UserRole.business_owner
+            db.flush()
+        # Same for an owner seeded before the phone existed: without it, the
+        # mobile app has no way to sign this account in.
+        if owner.phone_normalized is None:
+            owner.phone = SEED_OWNER["phone"]
+            owner.phone_normalized = SEED_OWNER["phone_normalized"]
             db.flush()
         return owner, False
 
