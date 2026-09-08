@@ -6,6 +6,7 @@ from app.api.v1 import (
     audit,
     auth,
     businesses,
+    business_reviews,
     businesses_owner,
     categories,
     consents,
@@ -21,6 +22,7 @@ api_router.include_router(audit.router)
 api_router.include_router(businesses.router)
 api_router.include_router(businesses_owner.router)
 api_router.include_router(enquiries.router)
+api_router.include_router(business_reviews.router)
 api_router.include_router(categories.router)
 api_router.include_router(consents.router)
 api_router.include_router(profile.router)

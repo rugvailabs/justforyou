@@ -20,6 +20,9 @@ import type {
   BusinessDetail,
   BusinessListItem,
   BusinessOwnerItem,
+  BusinessReview,
+  BusinessReviewCreate,
+  BusinessReviewSummary,
   BusinessSearchParams,
   BusinessUpdate,
   Category,
@@ -408,5 +411,68 @@ export function getEnquiries(
   return apiFetch<EnquiryOut[]>(
     `/businesses/${businessId}/enquiries${suffix ? `?${suffix}` : ""}`,
     { method: "GET" },
+  );
+}
+
+/* --------------------------------------------------------- review calls */
+
+/** GET /businesses/{id}/reviews - public, newest first. */
+export function getReviews(
+  businessId: number,
+  options: { limit?: number; offset?: number } = {},
+): Promise<BusinessReview[]> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined) qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return apiFetch<BusinessReview[]>(
+    `/businesses/${businessId}/reviews${suffix ? `?${suffix}` : ""}`,
+    { method: "GET", auth: false },
+  );
+}
+
+/** GET /businesses/{id}/reviews/summary - average, count and histogram. */
+export function getReviewSummary(
+  businessId: number,
+): Promise<BusinessReviewSummary> {
+  return apiFetch<BusinessReviewSummary>(
+    `/businesses/${businessId}/reviews/summary`,
+    { method: "GET", auth: false },
+  );
+}
+
+/**
+ * POST /businesses/{id}/reviews - leave a review. Requires an account.
+ *
+ * @throws {ApiError} 409 when this user has already reviewed the listing,
+ * 403 when they own it.
+ */
+export function createReview(
+  businessId: number,
+  payload: BusinessReviewCreate,
+): Promise<BusinessReview> {
+  return apiFetch<BusinessReview>(`/businesses/${businessId}/reviews`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/**
+ * POST /businesses/{id}/reviews/{reviewId}/reply - the owner's reply.
+ *
+ * One reply per review: calling this again overwrites the previous text.
+ *
+ * @throws {ApiError} 403 when the listing belongs to someone else, 404 when
+ * the review is not on this listing.
+ */
+export function replyToReview(
+  businessId: number,
+  reviewId: number,
+  reply: string,
+): Promise<BusinessReview> {
+  return apiFetch<BusinessReview>(
+    `/businesses/${businessId}/reviews/${reviewId}/reply`,
+    { method: "POST", body: { reply } },
   );
 }

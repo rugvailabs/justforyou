@@ -7,6 +7,7 @@ model file must be added to this module.
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.business import Business, BusinessStatus
+from app.models.business_review import BusinessReview
 from app.models.category import Category
 from app.models.consent import Consent, ConsentType
 from app.models.enquiry import Enquiry, EnquiryType
@@ -27,6 +28,7 @@ __all__ = [
     "Base",
     "Business",
     "BusinessStatus",
+    "BusinessReview",
     "Category",
     "Consent",
     "ConsentType",

@@ -1,0 +1,105 @@
+"use client";
+
+/**
+ * Inline reply box shown under a review that has no owner reply yet.
+ *
+ * Once a reply exists this component renders nothing and the page shows the
+ * reply instead. That is deliberate: the backend stores one reply per review,
+ * so posting again silently overwrites the previous text. Leaving the form on
+ * screen would invite exactly that mistake.
+ *
+ * On success it updates the row in place so the reply appears immediately,
+ * then calls router.refresh() to re-run the Server Component and reconcile
+ * with whatever the server actually stored.
+ */
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import Button from "@/components/ui/Button";
+
+export default function OwnerReplyForm({
+  businessId,
+  reviewId,
+  onReplied,
+}: {
+  businessId: number;
+  reviewId: number;
+  /** Optimistic update: show the reply before the server round-trip lands. */
+  onReplied: (reply: string) => void;
+}): JSX.Element {
+  const router = useRouter();
+  const [reply, setReply] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    const text = reply.trim();
+    if (!text) return;
+
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/dashboard/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_id: businessId, review_id: reviewId, reply: text }),
+      });
+      const body: unknown = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(
+          body && typeof body === "object" && "detail" in body
+            ? String((body as { detail: unknown }).detail)
+            : `Could not post that reply (HTTP ${res.status}).`,
+        );
+        return;
+      }
+
+      // Show it straight away, then let the server be the final word.
+      onReplied(text);
+      router.refresh();
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mt-3 border-t border-slate-100 pt-3">
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          Reply publicly
+        </span>
+        <textarea
+          rows={3}
+          maxLength={2000}
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          placeholder="Thanks for the feedback…"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+        />
+      </label>
+
+      <p className="mt-1 text-xs text-slate-500">
+        Your reply is shown publicly under this review, and can only be posted
+        once.
+      </p>
+
+      {error !== null ? (
+        <p role="alert" className="mt-2 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-2">
+        <Button type="submit" size="sm" disabled={submitting || !reply.trim()}>
+          {submitting ? "Posting…" : "Post reply"}
+        </Button>
+      </div>
+    </form>
+  );
+}

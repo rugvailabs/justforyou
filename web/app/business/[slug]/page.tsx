@@ -10,8 +10,6 @@
  * are therefore absent rather than faked - see the "Not yet available" note
  * rendered at the foot of the page:
  *   - photo gallery      (no business_photos table)
- *   - reviews + replies  (no reviews table; the API's ReviewDetail schemas are
- *                         the admin moderation queue, something else entirely)
  *   - opening hours/tags (not yet surfaced here)
  * Inventing placeholder content for them would misrepresent the data.
  */
@@ -27,7 +25,7 @@ import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import RatingStars from "@/components/ui/RatingStars";
 import { ButtonLink } from "@/components/ui/Button";
-import { getBusinessBySlug } from "@/lib/api";
+import { getBusinessBySlug, getReviews } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +51,16 @@ export default async function BusinessPage({
   params: { slug: string };
 }): Promise<JSX.Element> {
   const business = await getBusinessBySlug(params.slug);
-
-  // No detail endpoint means no 404 from the backend; an unmatched slug is
-  // simply absent from the search results, which is the same thing here.
   if (business === null) notFound();
+
+  // Reviews are a separate call so a review-service hiccup cannot take the
+  // whole listing page down with it.
+  let reviews: Awaited<ReturnType<typeof getReviews>> = [];
+  try {
+    reviews = await getReviews(business.id, { limit: 20 });
+  } catch {
+    reviews = [];
+  }
 
   const hasPoint = business.latitude !== null && business.longitude !== null;
   const address = [business.address, business.city, business.province]
@@ -220,16 +224,76 @@ export default async function BusinessPage({
         </aside>
       </div>
 
-      {/* --- honest gap notice -------------------------------------------- */}
+      {/* --- reviews ------------------------------------------------------ */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          Reviews{reviews.length > 0 ? ` (${reviews.length})` : ""}
+        </h2>
+
+        {reviews.length === 0 ? (
+          <Card>
+            <p className="text-sm text-slate-600">
+              No reviews yet. Be the first to review {business.name}.
+            </p>
+          </Card>
+        ) : (
+          <ul className="space-y-3">
+            {reviews.map((review) => (
+              <li key={review.id}>
+                <Card>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <RatingStars rating={review.rating} showCount={false} />
+                      {review.title !== null ? (
+                        <h3 className="mt-1 font-semibold text-slate-900">
+                          {review.title}
+                        </h3>
+                      ) : null}
+                    </div>
+                    <div className="text-right text-sm text-slate-500">
+                      <div>{review.author_name}</div>
+                      <div>
+                        {new Date(review.created_at).toLocaleDateString("en-CA", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {review.body !== null ? (
+                    <p className="mt-2 text-sm text-slate-700">{review.body}</p>
+                  ) : null}
+
+                  {/* The owner's reply, rendered inline under the review it
+                      answers - same owner_reply field the dashboard writes. */}
+                  {review.owner_reply !== null ? (
+                    <div className="mt-3 rounded-md border-l-2 border-slate-300 bg-slate-50 px-3 py-2">
+                      <p className="text-xs font-medium text-slate-500">
+                        Response from {business.name}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {review.owner_reply}
+                      </p>
+                    </div>
+                  ) : null}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="mt-8">
         <Card className="border-slate-300 bg-slate-50">
           <h2 className="text-sm font-semibold text-slate-800">
             Not yet available
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Photos and customer reviews need backend tables that do not exist
-            yet, so they are left out rather than mocked. Nothing on this page
-            is placeholder data.
+            A photo gallery needs a backend table that does not exist yet, so it
+            is left out rather than mocked. Nothing on this page is placeholder
+            data.
           </p>
         </Card>
       </section>

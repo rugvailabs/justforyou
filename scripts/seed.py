@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import SessionLocal
 from app.core.security import hash_password
-from scripts.seed_directory import seed_businesses, seed_categories
+from scripts.seed_directory import seed_businesses, seed_categories, seed_reviews
 from app.services import storage
 from app.models import (
     Consent,
@@ -207,6 +207,7 @@ def main() -> int:
         # Public directory: categories must exist before listings reference them.
         categories_created, categories_total = seed_categories(db)
         businesses_created, businesses_total = seed_businesses(db)
+        reviews_created, reviews_total = seed_reviews(db)
         db.commit()
         # commit() expires attributes and close() detaches the instances, so
         # read everything the summary needs while the session is still open.
@@ -256,6 +257,11 @@ def main() -> int:
         f"             {businesses_created} businesses created, "
         f"{businesses_total - businesses_created} already present "
         f"({businesses_total} total)"
+    )
+    print(
+        f"             {reviews_created} reviews created, "
+        f"{reviews_total - reviews_created} already present "
+        f"({reviews_total} total)"
     )
     return 0
 

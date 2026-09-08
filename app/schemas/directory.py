@@ -208,3 +208,47 @@ class EnquiryAck(BaseModel):
 
     id: int
     created_at: datetime
+
+
+class BusinessReviewCreate(BaseModel):
+    """A customer's review. Requires an account - see the endpoint."""
+
+    rating: int = Field(ge=1, le=5)
+    title: str | None = Field(default=None, max_length=255)
+    body: str | None = Field(default=None, max_length=5000)
+
+
+class OwnerReplyCreate(BaseModel):
+    """The owner's single reply to a review."""
+
+    reply: str = Field(min_length=1, max_length=2000)
+
+
+class BusinessReviewOut(BaseModel):
+    """A review as shown publicly and in the owner's dashboard.
+
+    Carries the author's display name but never their email: the review page
+    is public, and a reviewer has not consented to publishing their address.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    business_id: int
+    rating: int
+    title: str | None
+    body: str | None
+    owner_reply: str | None
+    owner_replied_at: datetime | None
+    created_at: datetime
+    author_id: int
+    author_name: str
+
+
+class BusinessReviewSummary(BaseModel):
+    """Aggregate shown above the review list."""
+
+    average_rating: float | None
+    review_count: int
+    # rating value -> how many reviews gave it, for the 5..1 histogram.
+    breakdown: dict[int, int]

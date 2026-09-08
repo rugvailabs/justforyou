@@ -320,3 +320,41 @@ export interface EnquiryAck {
   id: number;
   created_at: string;
 }
+
+/* --------------------------------------------------------------- reviews */
+
+/**
+ * A customer review of a listing, with the owner's optional reply.
+ *
+ * Note this is unrelated to the backend's ReviewDetail/ReviewStats schemas,
+ * which belong to the voice-submission moderation console.
+ */
+export interface BusinessReview {
+  id: number;
+  business_id: number;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  /** null when the owner has not replied. One reply per review. */
+  owner_reply: string | null;
+  owner_replied_at: string | null;
+  created_at: string;
+  author_id: number;
+  /** Display name only - reviewer emails are never exposed publicly. */
+  author_name: string;
+}
+
+/** GET /businesses/{id}/reviews/summary */
+export interface BusinessReviewSummary {
+  average_rating: number | null;
+  review_count: number;
+  /** rating value -> count, for the 5..1 histogram. */
+  breakdown: Record<string, number>;
+}
+
+/** POST /businesses/{id}/reviews body. */
+export interface BusinessReviewCreate {
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+}

@@ -19,7 +19,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.business import Business
+from app.models.business_review import BusinessReview
 from app.models.category import Category
+from app.models.user import User, UserRole
 
 # (slug, name, icon, sort_order, description)
 CATEGORIES: List[Tuple[str, str, str, int, str]] = [
@@ -161,3 +163,89 @@ def seed_businesses(db: Session) -> Tuple[int, int]:
         created += 1
     db.flush()
     return created, len(BUSINESSES)
+
+
+# (business slug, reviewer name, reviewer email, rating, title, body)
+# Reviewers are ordinary customer accounts created by the seed so the
+# one-review-per-user constraint has real users behind it.
+SEED_REVIEWS = [
+    ("harbourfront-plumbing", "Priya Raman", "priya.raman@example.ca", 5,
+     "Came out at 11pm", "Burst pipe on a Sunday night and they were here within the hour. Fair price, no fuss."),
+    ("harbourfront-plumbing", "Tom Beckett", "tom.beckett@example.ca", 4,
+     "Solid work, slow to quote", "The repair itself was excellent. Took three days to get the written quote though."),
+    ("harbourfront-plumbing", "Aisha Noor", "aisha.noor@example.ca", 3,
+     "Fine, but pricey", "Job was done properly. Felt expensive for what turned out to be a 40 minute fix."),
+    ("queen-west-electric", "Marcus Webb", "marcus.webb@example.ca", 5,
+     "Panel upgrade done right", "ESA paperwork handled, site left spotless. Would use again."),
+    ("the-annex-kitchen", "Sofia Marino", "sofia.marino@example.ca", 4,
+     "Lovely room, tight tables", "Food was genuinely excellent. Bring a small bag, it is snug."),
+]
+
+SEED_REVIEWER_PASSWORD = "reviewerpass123"
+
+
+def seed_reviews(db: Session) -> Tuple[int, int]:
+    """Create missing reviews and refresh the affected listings' aggregates.
+
+    Idempotent on (business, author). Recomputing the aggregate afterwards is
+    what makes the seeded placeholder rating give way to the real one.
+    """
+    from app.core.security import hash_password
+    from sqlalchemy import func
+
+    created = 0
+    touched: set[int] = set()
+
+    for slug, name, email, rating, title, body in SEED_REVIEWS:
+        business = db.scalar(select(Business).where(Business.slug == slug))
+        if business is None:
+            continue
+
+        author = db.scalar(select(User).where(User.email == email))
+        if author is None:
+            author = User(
+                name=name,
+                email=email,
+                hashed_password=hash_password(SEED_REVIEWER_PASSWORD),
+                role=UserRole.customer,
+            )
+            db.add(author)
+            db.flush()
+
+        existing = db.scalar(
+            select(BusinessReview).where(
+                BusinessReview.business_id == business.id,
+                BusinessReview.user_id == author.id,
+            )
+        )
+        if existing is not None:
+            touched.add(business.id)
+            continue
+
+        db.add(
+            BusinessReview(
+                business_id=business.id,
+                user_id=author.id,
+                rating=rating,
+                title=title,
+                body=body,
+            )
+        )
+        created += 1
+        touched.add(business.id)
+
+    db.flush()
+
+    for business_id in touched:
+        business = db.get(Business, business_id)
+        if business is None:
+            continue
+        avg, count = db.execute(
+            select(func.avg(BusinessReview.rating), func.count(BusinessReview.id))
+            .where(BusinessReview.business_id == business_id)
+        ).one()
+        business.rating = round(float(avg), 2) if avg is not None else None
+        business.review_count = count or 0
+
+    db.flush()
+    return created, len(SEED_REVIEWS)

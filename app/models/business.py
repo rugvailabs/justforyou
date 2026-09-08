@@ -23,6 +23,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.category import Category
+    from app.models.business_review import BusinessReview
     from app.models.enquiry import Enquiry
     from app.models.user import User
 
@@ -97,8 +98,14 @@ class Business(Base):
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     website: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
+    # Denormalised aggregate over business_reviews, recomputed on every review
+    # write (see app/api/v1/business_reviews.py). Kept on the row because
+    # search sorts and filters on it and will not tolerate a per-row subquery.
+    #
     # NULL means "no ratings yet", which is not the same as 0.0 and must not be
-    # filtered in by ?min_rating=0.
+    # filtered in by ?min_rating=0. Seeded listings carry placeholder values
+    # until they receive their first real review, at which point the aggregate
+    # takes over.
     rating: Mapped[float | None] = mapped_column(Float, nullable=True)
     review_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
@@ -133,6 +140,9 @@ class Business(Base):
     owner: Mapped["User | None"] = relationship(back_populates="businesses")
     # Leads die with the listing they were made against.
     enquiries: Mapped[list["Enquiry"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
+    reviews: Mapped[list["BusinessReview"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )
 

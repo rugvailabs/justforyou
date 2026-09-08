@@ -136,7 +136,13 @@ export default async function DashboardPage({
                   >
                     Leads
                   </ButtonLink>
-                  {/* Reviews management is slice C - no reviews table yet. */}
+                  <ButtonLink
+                    href={`/dashboard/${listing.id}/reviews`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Reviews
+                  </ButtonLink>
                   {listing.status === "approved" ? (
                     <ButtonLink
                       href={`/business/${listing.slug}`}
