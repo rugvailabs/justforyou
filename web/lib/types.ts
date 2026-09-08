@@ -233,6 +233,9 @@ export interface BusinessOwnerItem {
   review_count: number;
   is_active: boolean;
   verified: boolean;
+  /** Why a listing was rejected or suspended. Written by a moderator. */
+  moderation_note: string | null;
+  moderated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -358,3 +361,36 @@ export interface BusinessReviewCreate {
   title?: string | null;
   body?: string | null;
 }
+
+/* ------------------------------------------------------------- moderation */
+
+/** A listing as the moderator sees it, with enough context to decide. */
+export interface ModerationQueueItem {
+  id: number;
+  name: string;
+  slug: string;
+  status: BusinessStatus;
+  city: string;
+  province: string;
+  address: string | null;
+  description: string | null;
+  phone: string | null;
+  website: string | null;
+  category_name: string;
+  owner_id: number | null;
+  /** Admin-only surface; never rendered on a public page. */
+  owner_email: string | null;
+  moderation_note: string | null;
+  moderated_at: string | null;
+  created_at: string;
+}
+
+export interface ModerationStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  suspended: number;
+}
+
+/** Verb applied to a listing. `approve` works from any status, so it also reinstates. */
+export type ModerationAction = "approve" | "reject" | "suspend";

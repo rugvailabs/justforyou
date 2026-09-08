@@ -79,7 +79,9 @@ class User(Base):
     )
     # Listings this user owns. No cascade delete: a listing outliving its owner
     # is a moderation problem, not something to silently destroy.
-    businesses: Mapped[List["Business"]] = relationship(back_populates="owner")
+    businesses: Mapped[List["Business"]] = relationship(
+        back_populates="owner", foreign_keys="Business.owner_id"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"

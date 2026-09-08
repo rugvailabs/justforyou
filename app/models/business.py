@@ -129,6 +129,17 @@ class Business(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
+    # Moderation trail, mirroring review_queue's decided_by/reviewer_note.
+    # The note is shown to the owner: a rejection they cannot understand is
+    # just a dead end.
+    moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    moderated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # SET NULL: losing the moderator's account must not erase the decision.
+    moderated_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -137,7 +148,13 @@ class Business(Base):
     )
 
     category: Mapped["Category"] = relationship(back_populates="businesses")
-    owner: Mapped["User | None"] = relationship(back_populates="businesses")
+    # foreign_keys is required, not optional: businesses now has two FKs to
+    # users (owner_id and moderated_by), so the join is ambiguous without it.
+    # Omitting it fails at mapper-configuration time, which takes down every
+    # query in the app - including login - not just this relationship.
+    owner: Mapped["User | None"] = relationship(
+        back_populates="businesses", foreign_keys=[owner_id]
+    )
     # Leads die with the listing they were made against.
     enquiries: Mapped[list["Enquiry"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"

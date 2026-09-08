@@ -121,6 +121,20 @@ export default async function DashboardPage({
                   <StatusBadge status={listing.status} showHint />
                 </div>
 
+                {/* A rejection or suspension the owner cannot read is a dead
+                    end, so the moderator's reason is surfaced here. */}
+                {listing.moderation_note !== null &&
+                (listing.status === "rejected" || listing.status === "suspended") ? (
+                  <div className="rounded-md border-l-2 border-amber-400 bg-amber-50 px-3 py-2">
+                    <p className="text-xs font-medium text-amber-800">
+                      Moderator note
+                    </p>
+                    <p className="mt-1 text-sm text-amber-900">
+                      {listing.moderation_note}
+                    </p>
+                  </div>
+                ) : null}
+
                 <div className="flex flex-wrap gap-2">
                   <ButtonLink
                     href={`/dashboard/${listing.id}/edit`}

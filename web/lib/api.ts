@@ -24,12 +24,16 @@ import type {
   BusinessReviewCreate,
   BusinessReviewSummary,
   BusinessSearchParams,
+  BusinessStatus,
   BusinessUpdate,
   Category,
   EnquiryAck,
   EnquiryCreate,
   EnquiryOut,
   EnquiryType,
+  ModerationAction,
+  ModerationQueueItem,
+  ModerationStats,
   LoginRequest,
   SearchResponse,
   SignupRequest,
@@ -475,4 +479,50 @@ export function replyToReview(
     `/businesses/${businessId}/reviews/${reviewId}/reply`,
     { method: "POST", body: { reply } },
   );
+}
+
+/* ------------------------------------------------------ moderation calls */
+
+/**
+ * GET /api/v1/admin/businesses - the moderation queue. Admin only.
+ *
+ * Defaults to pending, oldest first, so the longest-waiting owner surfaces
+ * first - the opposite of every other list in this API.
+ */
+export function getModerationQueue(
+  status?: BusinessStatus,
+  options: { limit?: number; offset?: number } = {},
+): Promise<ModerationQueueItem[]> {
+  const qs = new URLSearchParams();
+  if (status !== undefined) qs.set("status", status);
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined) qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return apiFetch<ModerationQueueItem[]>(
+    `/admin/businesses${suffix ? `?${suffix}` : ""}`,
+    { method: "GET" },
+  );
+}
+
+/** GET /api/v1/admin/businesses/stats - counts per status. Admin only. */
+export function getModerationStats(): Promise<ModerationStats> {
+  return apiFetch<ModerationStats>("/admin/businesses/stats", { method: "GET" });
+}
+
+/**
+ * Apply a moderation decision. Admin only.
+ *
+ * `reason` is required by the API for reject and suspend - the owner reads it -
+ * and optional for approve.
+ */
+export function moderateBusiness(
+  businessId: number,
+  action: ModerationAction,
+  reason?: string,
+): Promise<BusinessDetail> {
+  return apiFetch<BusinessDetail>(`/admin/businesses/${businessId}/${action}`, {
+    method: "POST",
+    body: reason !== undefined ? { reason } : undefined,
+  });
 }

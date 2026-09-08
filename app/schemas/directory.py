@@ -95,6 +95,10 @@ class BusinessOwnerItem(BaseModel):
     review_count: int
     is_active: bool
     verified: bool
+    # Why a listing was rejected or suspended. Shown to the owner - a decision
+    # they cannot understand is a dead end.
+    moderation_note: str | None = None
+    moderated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -252,3 +256,49 @@ class BusinessReviewSummary(BaseModel):
     review_count: int
     # rating value -> how many reviews gave it, for the 5..1 histogram.
     breakdown: dict[int, int]
+
+
+class ModerationDecision(BaseModel):
+    """Reason attached to a moderation decision.
+
+    Required for reject and suspend, optional on approve - an owner needs to
+    know why they were turned down, not why they were let through.
+    """
+
+    reason: str = Field(
+        min_length=3,
+        max_length=1000,
+        description="Shown to the listing owner. Recorded against the listing.",
+    )
+
+
+class ModerationQueueItem(BaseModel):
+    """A listing as the moderator sees it, with enough context to decide."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    slug: str
+    status: BusinessStatus
+    city: str
+    province: str
+    address: str | None
+    description: str | None
+    phone: str | None
+    website: str | None
+    category_name: str
+    owner_id: int | None
+    # Admin-only surface, so identifying the submitter is appropriate here in
+    # a way it never is on the public listing page.
+    owner_email: str | None
+    moderation_note: str | None
+    moderated_at: datetime | None
+    created_at: datetime
+
+
+class ModerationStats(BaseModel):
+    pending: int
+    approved: int
+    rejected: int
+    suspended: int
