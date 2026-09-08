@@ -1,0 +1,45 @@
+# Line-ending policy.
+#
+# Everything is stored LF in the repository AND checked out LF in the working
+# tree. This project is edited from Windows but runs inside Linux containers
+# (the backend bind-mounts the repo at /app), so a CRLF checkout means the
+# container reads CRLF files. `eol=lf` keeps a Windows checkout, a WSL
+# checkout and the container byte-identical, and stops Git printing
+# "LF will be replaced by CRLF" on every commit.
+#
+# `text=auto` still lets Git detect binary content and leave it untouched;
+# the explicit rules below are belt-and-braces for files where a wrong guess
+# would corrupt them.
+* text=auto eol=lf
+
+# --- binary: never convert -------------------------------------------------
+*.ico  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.pdf  binary
+*.mp4  binary
+*.woff  binary
+*.woff2 binary
+*.zip  binary
+*.gz   binary
+
+# --- must stay LF ----------------------------------------------------------
+# ClamAV parses signature files line by line and a trailing CR becomes part of
+# the pattern, so a CRLF checkout silently breaks malware detection.
+*.ndb text eol=lf
+# Read by clamd inside the container.
+*.conf text eol=lf
+*.sh   text eol=lf
+Dockerfile text eol=lf
+
+# --- must stay CRLF --------------------------------------------------------
+# cmd.exe mis-parses LF-only batch files.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# --- diff hygiene ----------------------------------------------------------
+# Lockfiles are generated; keep them out of review diffs.
+package-lock.json -diff linguist-generated
