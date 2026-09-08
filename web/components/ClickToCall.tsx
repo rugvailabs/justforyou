@@ -6,13 +6,9 @@
  * Revealing on click is what creates the trackable moment: the click is the
  * lead, not the page view.
  *
- * LEAD TRACKING IS NOT WIRED. The step this came from specifies firing
- * `POST /businesses/{id}/enquiries` with `type: "CALL_CLICK"` on reveal, but
- * that endpoint does not exist on the backend (there is no `enquiries` table
- * and no route). Rather than fire-and-forget into a 404 - which looks like it
- * works, silently records nothing, and litters the console - the call is
- * isolated in `trackCallClick` below and left inert. Wiring it up is a
- * one-function change once the endpoint lands.
+ * The reveal fires a `call_click` enquiry so the owner sees it in their leads
+ * inbox. It is fire-and-forget on purpose: revealing the number is the user's
+ * intent and must never wait on, or be blocked by, lead tracking.
  */
 
 import { useState } from "react";
@@ -20,17 +16,27 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 
 /**
- * Where the tracked enquiry POST goes once the backend has it.
+ * Record the reveal as a lead.
  *
- * Deliberately not called yet. When implemented it must stay fire-and-forget:
- * revealing the number is the user's intent and must never wait on, or be
- * blocked by, analytics.
+ * Goes through our own route handler rather than :8000 directly: the API has
+ * no CORS, and the handler is what attaches the JWT for a signed-in customer
+ * so the lead is attributed rather than anonymous.
+ *
+ * Failures are swallowed. A lost analytics event must never surface as an
+ * error over a phone number the user asked to see.
  */
-async function trackCallClick(_businessId: number): Promise<void> {
-  // TODO(backend): POST /businesses/{id}/enquiries { type: "CALL_CLICK" }
-  // via a same-origin route handler - the API has no CORS, so the browser
-  // cannot post to :8000 directly.
-  return;
+async function trackCallClick(businessId: number): Promise<void> {
+  try {
+    await fetch("/api/enquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_id: businessId, enquiry_type: "call_click" }),
+      // Survives the navigation if the user taps the tel: link immediately.
+      keepalive: true,
+    });
+  } catch {
+    // Deliberately ignored.
+  }
 }
 
 /** Show a number as digits only for the tel: href. */

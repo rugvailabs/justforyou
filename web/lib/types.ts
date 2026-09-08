@@ -282,3 +282,41 @@ export interface BusinessCreate {
 
 /** PATCH /businesses/{id} body. Omitted fields are left alone. */
 export type BusinessUpdate = Partial<BusinessCreate> & { is_active?: boolean };
+
+/* ------------------------------------------------------------- enquiries */
+
+/**
+ * What the customer did. `call_click` carries no message - it records that
+ * someone revealed the phone number, which is the closest signal of intent a
+ * directory can observe without the call itself.
+ */
+export type EnquiryType = "call_click" | "callback" | "quote" | "chat";
+
+/** POST /businesses/{id}/enquiries body. Anonymous callers are allowed. */
+export interface EnquiryCreate {
+  enquiry_type: EnquiryType;
+  message?: string | null;
+  contact_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+}
+
+/** A lead as its owner sees it - GET /businesses/{id}/enquiries. */
+export interface EnquiryOut {
+  id: number;
+  business_id: number;
+  enquiry_type: EnquiryType;
+  message: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  /** Present when the enquiry came from a signed-in customer. */
+  user_id: number | null;
+  created_at: string;
+}
+
+/** Thin ack from the public POST - it never echoes the stored lead back. */
+export interface EnquiryAck {
+  id: number;
+  created_at: string;
+}

@@ -12,8 +12,7 @@
  *   - photo gallery      (no business_photos table)
  *   - reviews + replies  (no reviews table; the API's ReviewDetail schemas are
  *                         the admin moderation queue, something else entirely)
- *   - enquiry form       (no enquiries table, no get_current_user_optional)
- *   - opening hours/tags (no such columns on businesses)
+ *   - opening hours/tags (not yet surfaced here)
  * Inventing placeholder content for them would misrepresent the data.
  */
 
@@ -22,6 +21,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import ClickToCall from "@/components/ClickToCall";
+import EnquiryForm from "@/components/EnquiryForm";
 import MapEmbed from "@/components/MapEmbed";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
@@ -140,6 +140,10 @@ export default async function BusinessPage({
         </div>
       </div>
 
+      <div className="mb-6">
+        <EnquiryForm businessId={business.id} businessName={business.name} />
+      </div>
+
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2">
           {business.description !== null ? (
@@ -223,9 +227,9 @@ export default async function BusinessPage({
             Not yet available
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Photos, customer reviews, opening hours and the enquiry form need
-            backend tables and endpoints that do not exist yet. They are left
-            out rather than mocked, so nothing on this page is placeholder data.
+            Photos and customer reviews need backend tables that do not exist
+            yet, so they are left out rather than mocked. Nothing on this page
+            is placeholder data.
           </p>
         </Card>
       </section>

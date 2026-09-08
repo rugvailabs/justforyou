@@ -129,8 +129,14 @@ export default async function DashboardPage({
                   >
                     Edit
                   </ButtonLink>
-                  {/* Leads and reviews are slices B and C - the endpoints they
-                      need do not exist yet, so they are not linked. */}
+                  <ButtonLink
+                    href={`/dashboard/${listing.id}/leads`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Leads
+                  </ButtonLink>
+                  {/* Reviews management is slice C - no reviews table yet. */}
                   {listing.status === "approved" ? (
                     <ButtonLink
                       href={`/business/${listing.slug}`}

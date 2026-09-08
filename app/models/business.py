@@ -23,6 +23,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.category import Category
+    from app.models.enquiry import Enquiry
     from app.models.user import User
 
 
@@ -130,6 +131,10 @@ class Business(Base):
 
     category: Mapped["Category"] = relationship(back_populates="businesses")
     owner: Mapped["User | None"] = relationship(back_populates="businesses")
+    # Leads die with the listing they were made against.
+    enquiries: Mapped[list["Enquiry"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Business id={self.id} slug={self.slug!r} city={self.city!r}>"

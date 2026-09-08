@@ -55,6 +55,37 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Resolve the caller if they are signed in, otherwise return None.
+
+    For endpoints that anonymous visitors may use but that should still
+    attribute the action when a token is present - leaving an enquiry, say.
+
+    A malformed or expired token yields None rather than a 401: the caller is
+    simply treated as anonymous. Anything that must not be done anonymously
+    belongs behind get_current_user instead.
+    """
+    if credentials is None or not credentials.credentials:
+        return None
+    try:
+        payload = decode_access_token(credentials.credentials)
+    except JWTError:
+        return None
+
+    subject = payload.get("sub")
+    if subject is None:
+        return None
+    try:
+        user_id = int(subject)
+    except (TypeError, ValueError):
+        return None
+
+    return db.get(User, user_id)
+
+
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """Admit only users with the is_admin flag set.
 

@@ -9,6 +9,7 @@ from app.models.base import Base
 from app.models.business import Business, BusinessStatus
 from app.models.category import Category
 from app.models.consent import Consent, ConsentType
+from app.models.enquiry import Enquiry, EnquiryType
 from app.models.extracted_problem import ExtractedProblem, Urgency
 from app.models.match import Match, MatchType
 from app.models.message_sent import (
@@ -29,6 +30,8 @@ __all__ = [
     "Category",
     "Consent",
     "ConsentType",
+    "Enquiry",
+    "EnquiryType",
     "ExtractedProblem",
     "Urgency",
     "Match",

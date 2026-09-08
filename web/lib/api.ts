@@ -23,6 +23,10 @@ import type {
   BusinessSearchParams,
   BusinessUpdate,
   Category,
+  EnquiryAck,
+  EnquiryCreate,
+  EnquiryOut,
+  EnquiryType,
   LoginRequest,
   SearchResponse,
   SignupRequest,
@@ -363,4 +367,46 @@ export function updateBusiness(
     method: "PATCH",
     body: payload,
   });
+}
+
+/* -------------------------------------------------------- enquiry calls */
+
+/**
+ * POST /businesses/{id}/enquiries - record a lead.
+ *
+ * `auth: false` because this is open to anonymous visitors. When a token is
+ * present the backend attributes the lead, but it is never required; the
+ * caller passes one explicitly if it has one.
+ */
+export function createEnquiry(
+  businessId: number,
+  payload: EnquiryCreate,
+  token?: string,
+): Promise<EnquiryAck> {
+  return apiFetch<EnquiryAck>(`/businesses/${businessId}/enquiries`, {
+    method: "POST",
+    body: payload,
+    auth: token !== undefined,
+    token,
+  });
+}
+
+/**
+ * GET /businesses/{id}/enquiries - the owner's leads inbox, newest first.
+ *
+ * @throws {ApiError} 403 when the listing belongs to someone else.
+ */
+export function getEnquiries(
+  businessId: number,
+  options: { enquiry_type?: EnquiryType; limit?: number; offset?: number } = {},
+): Promise<EnquiryOut[]> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined) qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return apiFetch<EnquiryOut[]>(
+    `/businesses/${businessId}/enquiries${suffix ? `?${suffix}` : ""}`,
+    { method: "GET" },
+  );
 }

@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 from app.models.business import BusinessStatus
+from app.models.enquiry import EnquiryType
 
 
 class BusinessSort(str, enum.Enum):
@@ -164,3 +165,46 @@ class BusinessUpdate(BaseModel):
     opening_hours: dict[str, Any] | None = None
     # The owner may pause a listing, but cannot change its moderation status.
     is_active: bool | None = None
+
+
+class EnquiryCreate(BaseModel):
+    """A lead posted from a public listing page.
+
+    Anonymous callers are allowed, so contact details ride on the payload.
+    `call_click` carries no message - it just records that someone revealed
+    the number.
+    """
+
+    enquiry_type: EnquiryType
+    message: str | None = Field(default=None, max_length=2000)
+    contact_name: str | None = Field(default=None, max_length=255)
+    contact_phone: str | None = Field(default=None, max_length=32)
+    contact_email: str | None = Field(default=None, max_length=320)
+
+
+class EnquiryOut(BaseModel):
+    """A lead as its owner sees it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    business_id: int
+    enquiry_type: EnquiryType
+    message: str | None
+    contact_name: str | None
+    contact_phone: str | None
+    contact_email: str | None
+    # Present when the enquiry came from a signed-in customer.
+    user_id: int | None
+    created_at: datetime
+
+
+class EnquiryAck(BaseModel):
+    """Deliberately thin: the public endpoint confirms receipt and nothing more.
+
+    Echoing the stored row back would let anyone enumerate a business's leads
+    by posting one and reading the response.
+    """
+
+    id: int
+    created_at: datetime
