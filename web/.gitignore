@@ -5,3 +5,6 @@ next-env.d.ts
 *.tsbuildinfo
 .env*.local
 .DS_Store
+
+# Scratch HTML captured while testing pages with curl.
+/*.html
