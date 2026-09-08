@@ -1,0 +1,165 @@
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: justdial-ca-backend:latest
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+    clamav:
+      condition: service_healthy
+    mailhog:
+      condition: service_healthy
+  env_file:
+    - .env
+  environment:
+    DATABASE_URL: postgresql+psycopg2://justdial:justdial@postgres:5432/justdial_ca
+    REDIS_URL: redis://redis:6379/0
+    ENVIRONMENT: development
+    # In-cluster endpoint used for API calls (SDK -> MinIO).
+    MINIO_ENDPOINT: http://minio:9000
+    # Endpoint baked into presigned URLs. Must be reachable from the browser,
+    # which cannot resolve the "minio" service name.
+    MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+    MINIO_ACCESS_KEY: minioadmin
+    MINIO_SECRET_KEY: minioadmin
+    MINIO_BUCKET_VIDEOS: justdial-videos
+    CLAMAV_HOST: clamav
+    CLAMAV_PORT: "3310"
+    # Mailhog swallows everything and shows it at http://localhost:8025 -
+    # no mail ever leaves the machine in development.
+    SMTP_HOST: mailhog
+    SMTP_PORT: "1025"
+    SMTP_USER: ""
+    SMTP_PASSWORD: ""
+    MAIL_FROM: "justdial-ca <no-reply@justdial.ca>"
+  volumes:
+    - .:/app
+    # Whisper model weights, downloaded once and shared by backend and workers.
+    - whisper_models:/models
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: justdial_ca_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: justdial
+      POSTGRES_PASSWORD: justdial
+      POSTGRES_DB: justdial_ca
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U justdial -d justdial_ca"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: justdial_ca_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: justdial_ca_clamav
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
+    volumes:
+      # Persist virus definitions so a restart does not re-download ~250 MB.
+      - clamav_data:/var/lib/clamav
+      - ./docker/clamd.conf:/etc/clamav/clamd.conf:ro
+      # Custom test signature. Lets an integration test prove the scanner is
+      # actually in the upload path, which bare EICAR cannot: ClamAV matches
+      # EICAR by whole-file hash, so it never fires on a marker embedded in a
+      # valid video container.
+      - ./docker/clamav-signatures/justdial-test.ndb:/var/lib/clamav/justdial-test.ndb
+    healthcheck:
+      # The image's clamdcheck.sh pipes through `nc localhost`, which resolves
+      # to ::1 while clamd binds IPv4 only, so it always fails. clamdscan
+      # --ping speaks the protocol directly.
+      test: ["CMD", "clamdscan", "--ping", "3"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      # First boot loads the signature database into memory; this takes minutes.
+      start_period: 300s
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: justdial_ca_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP sink
+      - "8025:8025"   # web UI
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z 127.0.0.1 1025"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio
+    container_name: justdial_ca_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      # Built-in single-key KMS. Without this, SSE-S3 is unavailable and
+      # put_bucket_encryption fails. Value comes from .env, never committed.
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    <<: *app-base
+    container_name: justdial_ca_backend
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    <<: *app-base
+    container_name: justdial_ca_celery_worker
+    # concurrency is capped deliberately: each prefork child loads its own
+    # copy of the Whisper weights, so an unbounded default would multiply
+    # model memory by the host's CPU count.
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+
+  celery_beat:
+    <<: *app-base
+    container_name: justdial_ca_celery_beat
+    # --schedule points at /tmp so the shelve file is not written into the
+    # bind-mounted project directory. No periodic tasks are registered yet.
+    command: >
+      celery -A app.workers.celery_app beat --loglevel=info
+      --schedule=/tmp/celerybeat-schedule
+
+volumes:
+  postgres_data:
+  minio_data:
+  clamav_data:
+  whisper_models:

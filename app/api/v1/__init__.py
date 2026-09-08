@@ -1,0 +1,26 @@
+"""v1 API routers."""
+
+from fastapi import APIRouter
+
+from app.api.v1 import (
+    audit,
+    auth,
+    businesses,
+    categories,
+    consents,
+    profile,
+    review,
+    submissions,
+)
+
+api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(auth.router)
+api_router.include_router(audit.router)
+api_router.include_router(businesses.router)
+api_router.include_router(categories.router)
+api_router.include_router(consents.router)
+api_router.include_router(profile.router)
+api_router.include_router(review.router)
+api_router.include_router(submissions.router)
+
+__all__ = ["api_router"]
