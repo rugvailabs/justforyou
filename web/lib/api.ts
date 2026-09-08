@@ -16,6 +16,7 @@
 import { ACCESS_TOKEN_COOKIE } from "@/lib/cookies";
 import type {
   ApiErrorPayload,
+  BusinessListItem,
   BusinessSearchParams,
   Category,
   LoginRequest,
@@ -294,4 +295,46 @@ export function searchBusinesses(
     `/businesses/search${suffix ? `?${suffix}` : ""}`,
     { method: "GET", auth: false },
   );
+}
+
+/**
+ * Fetch a single listing by slug.
+ *
+ * STOPGAP. The backend has no `GET /businesses/{slug}` detail endpoint, so
+ * this pages through /businesses/search looking for an exact slug match.
+ *
+ * Why not search by name: slugs do not round-trip. "gta-storage-and-haul" is
+ * "GTA Storage & Haul", and no ILIKE on the de-slugged words finds it. So the
+ * scan is over pages, not a guessed query.
+ *
+ * That makes this O(rows) and it is capped at MAX_SLUG_SCAN_PAGES so a large
+ * catalogue cannot turn one page view into an unbounded crawl. Replace the
+ * whole function the moment a real detail endpoint exists - it should be a
+ * single keyed request, and it also needs to be what enforces "approved only".
+ */
+const SLUG_SCAN_PAGE_SIZE = 50;
+const MAX_SLUG_SCAN_PAGES = 10;
+
+export async function getBusinessBySlug(
+  slug: string,
+): Promise<BusinessListItem | null> {
+  const wanted = slug.trim().toLowerCase();
+  if (!wanted) return null;
+
+  for (let page = 1; page <= MAX_SLUG_SCAN_PAGES; page += 1) {
+    const results = await searchBusinesses({
+      page,
+      page_size: SLUG_SCAN_PAGE_SIZE,
+      sort: "name",
+    });
+
+    const match = results.items.find((item) => item.slug.toLowerCase() === wanted);
+    if (match) return match;
+
+    if (!results.has_next) return null;
+  }
+
+  // Ran out of budget before running out of rows: report "not found" rather
+  // than pretending the catalogue ended.
+  return null;
 }

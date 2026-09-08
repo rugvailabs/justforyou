@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import RatingStars from "@/components/ui/RatingStars";
@@ -17,7 +19,11 @@ export default function BusinessCard({
     <Card interactive className="flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate font-semibold text-slate-900">{business.name}</h3>
+          <h3 className="truncate font-semibold text-slate-900">
+            <Link href={`/business/${business.slug}`} className="hover:underline">
+              {business.name}
+            </Link>
+          </h3>
           <p className="text-sm text-slate-500">{business.category_name}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
