@@ -8,6 +8,7 @@
 import Link from "next/link";
 
 import AdminReviewList from "@/components/AdminReviewList";
+import AdminNav from "@/components/AdminNav";
 import Header from "@/components/Header";
 import Alert from "@/components/ui/Alert";
 import { FIELD } from "@/components/ui/field";
@@ -44,16 +45,17 @@ export default async function AdminReviewsPage({
     <div className="mx-auto max-w-3xl px-6 py-10">
       <Header />
 
-      <Link href="/admin" className="text-sm underline">
-        &larr; Admin overview
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
         Review moderation
       </h1>
       <p className="mt-1 text-sm text-slate-600">
         Owners can reply to reviews but not remove them. Deleting one here
         recalculates that listing&apos;s rating.
       </p>
+
+      <div className="mt-5">
+        <AdminNav current="reviews" />
+      </div>
 
       {/* A plain GET form: no client JS needed, and the result is a real URL. */}
       <form method="get" className="mt-5 flex flex-wrap gap-2" role="search">

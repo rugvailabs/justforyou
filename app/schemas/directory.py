@@ -316,6 +316,9 @@ class AdminStats(BaseModel):
     total_reviews: int
     total_enquiries: int
     total_conversations: int
+    #: KYC submissions waiting on a reviewer. Separate from pending_listings:
+    #: they are two queues and a moderator clears them separately.
+    pending_verifications: int
 
 
 class AdminReviewItem(BaseModel):

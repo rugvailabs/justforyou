@@ -41,6 +41,7 @@ import type {
   ModerationQueueItem,
   ModerationStats,
   OtpRequestAccepted,
+  PendingVerificationItem,
   PresignResponse,
   ProfileUpdate,
   LoginRequest,
@@ -790,4 +791,105 @@ export function presignDocument(params: {
   return apiFetch<PresignResponse>(`/uploads/presign?${qs.toString()}`, {
     method: "GET",
   });
+}
+
+/* ---------------------------------------------- verification moderation */
+
+/**
+ * GET /admin/verifications/pending - the KYC queue, oldest first.
+ *
+ * Oldest first like the listing queue: the person who has been waiting
+ * longest should be seen first.
+ */
+export function getPendingVerifications(
+  options: { limit?: number; offset?: number } = {},
+): Promise<PendingVerificationItem[]> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined) qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return apiFetch<PendingVerificationItem[]>(
+    `/admin/verifications/pending${suffix ? `?${suffix}` : ""}`,
+    { method: "GET" },
+  );
+}
+
+/**
+ * GET /admin/verifications/{id} - one submission, whatever its status.
+ *
+ * Not restricted to pending on purpose: a reviewer who has just approved
+ * something is still on its page, and a detail view that 404s the moment you
+ * act on it is one you cannot trust.
+ */
+export function getVerificationForReview(
+  verificationId: number,
+): Promise<PendingVerificationItem> {
+  return apiFetch<PendingVerificationItem>(
+    `/admin/verifications/${verificationId}`,
+    { method: "GET" },
+  );
+}
+
+/** POST /admin/verifications/{id}/approve - mark a business verified. */
+export function approveVerification(
+  verificationId: number,
+  note?: string,
+): Promise<BusinessVerification> {
+  return apiFetch<BusinessVerification>(
+    `/admin/verifications/${verificationId}/approve`,
+    { method: "POST", body: note !== undefined ? { note } : {} },
+  );
+}
+
+/**
+ * POST /admin/verifications/{id}/reject - refuse it, with a reason.
+ *
+ * The reason is required by the API and shown to the owner: a rejection they
+ * cannot act on just produces the same submission again.
+ */
+export function rejectVerification(
+  verificationId: number,
+  reason: string,
+): Promise<BusinessVerification> {
+  return apiFetch<BusinessVerification>(
+    `/admin/verifications/${verificationId}/reject`,
+    { method: "POST", body: { reason } },
+  );
+}
+
+/**
+ * GET /admin/verifications/{id}/documents/{kind} - follow the API's redirect
+ * to a signed URL for one submitted document.
+ *
+ * The stored value is an s3:// address a browser cannot open, and a signature
+ * minted at upload time would have expired long before a reviewer got here, so
+ * the API signs on demand and 307s. This reads that Location without following
+ * it, because the caller - our own route handler - has to hand the signed URL
+ * to the browser rather than fetch the bytes itself.
+ *
+ * Returns null when there is nothing to serve: no document of that kind, or a
+ * placeholder written while storage was unconfigured.
+ */
+export async function getVerificationDocumentLink(
+  verificationId: number,
+  kind: "license" | "gst",
+): Promise<string | null> {
+  const { cookies } = await import("next/headers");
+  const token = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
+
+  const res = await fetch(
+    `${API_BASE_URL}/admin/verifications/${verificationId}/documents/${kind}`,
+    {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      redirect: "manual",
+      cache: "no-store",
+    },
+  );
+
+  if (res.status === 307 || res.status === 302) {
+    return res.headers.get("location");
+  }
+  return null;
 }

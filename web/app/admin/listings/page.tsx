@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 
+import AdminNav from "@/components/AdminNav";
 import Header from "@/components/Header";
 import ModerationQueue from "@/components/ModerationQueue";
 import Alert from "@/components/ui/Alert";
@@ -70,10 +71,7 @@ export default async function AdminListingsPage({
     <div className="mx-auto max-w-4xl px-6 py-10">
       <Header />
 
-      <Link href="/admin" className="text-sm underline">
-        &larr; Admin overview
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
         Listing moderation
       </h1>
       <p className="mt-1 text-sm text-slate-600">
@@ -81,7 +79,11 @@ export default async function AdminListingsPage({
         suspending takes a reason, which the owner sees on their dashboard.
       </p>
 
-      <nav className="mt-5 flex flex-wrap gap-2" aria-label="Filter by status">
+      <div className="mt-5">
+        <AdminNav current="listings" pendingListings={stats?.pending ?? 0} />
+      </div>
+
+      <nav className="flex flex-wrap gap-2" aria-label="Filter by status">
         {TABS.map((tab) => {
           const count = stats?.[tab.status] ?? 0;
           const selected = tab.status === active;

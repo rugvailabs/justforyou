@@ -470,6 +470,12 @@ export interface AdminStats {
   total_reviews: number;
   total_enquiries: number;
   total_conversations: number;
+  /**
+   * KYC submissions waiting on a reviewer. Separate from pending_listings:
+   * they are two queues, cleared separately, and a listing can be waiting in
+   * both at once.
+   */
+  pending_verifications: number;
 }
 
 /**
@@ -546,4 +552,21 @@ export interface PresignResponse {
   method: string;
   /** True when storage is unconfigured and these URLs are placeholders. */
   stub: boolean;
+}
+
+/**
+ * A KYC submission as a reviewer sees it - GET /admin/verifications/pending
+ * and /admin/verifications/{id}.
+ *
+ * Everything on BusinessVerification plus the listing it belongs to, so the
+ * queue can be judged without opening each listing separately. `business_status`
+ * is the listing's own moderation state: a reviewer needs to know whether
+ * approving this is the last thing standing between the listing and search.
+ */
+export interface PendingVerificationItem extends BusinessVerification {
+  business_name: string;
+  business_slug: string;
+  business_city: string;
+  business_status: BusinessStatus;
+  owner_email: string | null;
 }

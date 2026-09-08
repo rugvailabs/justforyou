@@ -6,6 +6,8 @@ them would make the state machine harder to follow than the authorisation is:
     owner   POST /businesses/{id}/verification   submit, or resubmit
     owner   GET  /businesses/{id}/verification   where it stands
     admin   GET  /admin/verifications/pending    the queue
+    admin   GET  /admin/verifications/{id}       one submission, any status
+    admin   GET  /admin/verifications/{id}/documents/{kind}
     admin   POST /admin/verifications/{id}/approve
     admin   POST /admin/verifications/{id}/reject
 
@@ -22,6 +24,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -196,6 +199,28 @@ def get_verification(
     return record
 
 
+def _queue_item(
+    record: BusinessVerification, business: Business, owner: User | None
+) -> PendingVerificationItem:
+    """One row of the queue, with enough context to judge without opening the listing."""
+    return PendingVerificationItem(
+        **VerificationOut.model_validate(record).model_dump(),
+        business_name=business.name,
+        business_slug=business.slug,
+        business_city=business.city,
+        business_status=business.status.value,
+        owner_email=owner.email if owner is not None else None,
+    )
+
+
+def _queue_query():
+    return (
+        select(BusinessVerification, Business, User)
+        .join(Business, Business.id == BusinessVerification.business_id)
+        .outerjoin(User, User.id == Business.owner_id)
+    )
+
+
 @router.get(
     "/admin/verifications/pending", response_model=list[PendingVerificationItem]
 )
@@ -212,26 +237,90 @@ def list_pending_verifications(
     first.
     """
     rows = db.execute(
-        select(BusinessVerification, Business, User)
-        .join(Business, Business.id == BusinessVerification.business_id)
-        .outerjoin(User, User.id == Business.owner_id)
+        _queue_query()
         .where(BusinessVerification.status == VerificationStatus.pending)
         .order_by(BusinessVerification.submitted_at.asc())
         .offset(offset)
         .limit(limit)
     ).all()
 
-    return [
-        PendingVerificationItem(
-            **VerificationOut.model_validate(record).model_dump(),
-            business_name=business.name,
-            business_slug=business.slug,
-            business_city=business.city,
-            business_status=business.status.value,
-            owner_email=owner.email if owner is not None else None,
+    return [_queue_item(record, business, owner) for record, business, owner in rows]
+
+
+@router.get(
+    "/admin/verifications/{verification_id}", response_model=PendingVerificationItem
+)
+def get_verification_for_review(
+    verification_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> PendingVerificationItem:
+    """One submission, whatever its status.
+
+    Deliberately not restricted to pending: a reviewer who has just approved
+    something is still looking at its page, and a detail view that 404s the
+    moment you act on it is a detail view you cannot trust.
+    """
+    row = db.execute(
+        _queue_query().where(BusinessVerification.id == verification_id)
+    ).first()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Verification not found"
         )
-        for record, business, owner in rows
-    ]
+    record, business, owner = row
+    return _queue_item(record, business, owner)
+
+
+@router.get("/admin/verifications/{verification_id}/documents/{kind}")
+def open_verification_document(
+    verification_id: int,
+    kind: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    """Redirect to a short-lived signed URL for one submitted document.
+
+    The stored value is an s3:// address, which a browser cannot open, and the
+    signature has to be minted at read time - one signed at upload would have
+    expired long before a reviewer got here. So the link in the admin UI points
+    at this route and this route signs on demand.
+
+    Admin-only, and the signature is short-lived, so a URL that leaks into a
+    log or a screenshot stops working rather than exposing a licence scan
+    indefinitely.
+    """
+    record = _load_verification(db, verification_id)
+
+    document_url = {
+        "license": record.license_document_url,
+        "gst": record.gst_document_url,
+    }.get(kind)
+    if kind not in {"license", "gst"}:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown document"
+        )
+    if document_url is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No document of that kind was submitted.",
+        )
+
+    signed = storage.generate_document_download_url(document_url)
+    if signed is None:
+        # A placeholder written in stub mode, or storage that is unreachable.
+        # 409 rather than 404: the record exists and names a document, there is
+        # just nothing to serve.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This document cannot be opened: object storage is not "
+                "configured, so the reference was recorded but no file stored."
+            ),
+        )
+    # 307 keeps the method, and the signed URL is single-use enough that a
+    # cached 301 would be actively wrong.
+    return RedirectResponse(url=signed, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
 def _decide(

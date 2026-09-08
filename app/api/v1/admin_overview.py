@@ -22,6 +22,7 @@ from app.models.business_review import BusinessReview
 from app.models.chat import Conversation
 from app.models.enquiry import Enquiry
 from app.models.user import User
+from app.models.verification import BusinessVerification, VerificationStatus
 from app.schemas.directory import AdminReviewItem, AdminStats
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -63,6 +64,12 @@ def admin_stats(
         total_reviews=db.scalar(select(func.count(BusinessReview.id))) or 0,
         total_enquiries=db.scalar(select(func.count(Enquiry.id))) or 0,
         total_conversations=db.scalar(select(func.count(Conversation.id))) or 0,
+        pending_verifications=db.scalar(
+            select(func.count(BusinessVerification.id)).where(
+                BusinessVerification.status == VerificationStatus.pending
+            )
+        )
+        or 0,
     )
 
 

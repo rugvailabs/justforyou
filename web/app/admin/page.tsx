@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 
+import AdminNav from "@/components/AdminNav";
 import Header from "@/components/Header";
 import Alert from "@/components/ui/Alert";
 import Card from "@/components/ui/Card";
@@ -73,6 +74,14 @@ export default async function AdminHomePage(): Promise<JSX.Element> {
         Directory overview and moderation queues.
       </p>
 
+      <div className="mt-5">
+        <AdminNav
+          current="overview"
+          pendingListings={stats?.pending_listings}
+          pendingVerifications={stats?.pending_verifications}
+        />
+      </div>
+
       {error !== null ? (
         <Alert tone="error" title="Could not load the overview">
           {error}
@@ -84,6 +93,16 @@ export default async function AdminHomePage(): Promise<JSX.Element> {
               label="Pending review"
               value={stats.pending_listings}
               hint={stats.pending_listings > 0 ? "Waiting on you" : "Nothing waiting"}
+              urgent
+            />
+            <Stat
+              label="Awaiting verification"
+              value={stats.pending_verifications}
+              hint={
+                stats.pending_verifications > 0
+                  ? "KYC waiting on you"
+                  : "Nothing waiting"
+              }
               urgent
             />
             <Stat label="Live listings" value={stats.approved_listings} hint="In public search" />
@@ -99,7 +118,7 @@ export default async function AdminHomePage(): Promise<JSX.Element> {
             />
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
               <h2 className="font-semibold text-slate-900">Listings</h2>
               <p className="mt-1 text-sm text-slate-600">
@@ -111,6 +130,25 @@ export default async function AdminHomePage(): Promise<JSX.Element> {
                   {stats.pending_listings > 0
                     ? `Review ${stats.pending_listings} pending`
                     : "Browse listings"}
+                </ButtonLink>
+              </div>
+            </Card>
+
+            <Card>
+              <h2 className="font-semibold text-slate-900">Verification</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Check that the business behind a listing is real. A listing needs
+                this as well as approval before it appears in search.
+              </p>
+              <div className="mt-3">
+                <ButtonLink
+                  href="/admin/verifications"
+                  variant={stats.pending_verifications > 0 ? "primary" : "secondary"}
+                  size="sm"
+                >
+                  {stats.pending_verifications > 0
+                    ? `Review ${stats.pending_verifications} pending`
+                    : "Verification queue"}
                 </ButtonLink>
               </div>
             </Card>
