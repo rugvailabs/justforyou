@@ -18,9 +18,10 @@ from typing import List, Tuple
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.business import Business
+from app.models.business import Business, BusinessStatus
 from app.models.business_review import BusinessReview
 from app.models.category import Category
+from app.models.enquiry import Enquiry, EnquiryType
 from app.models.user import User, UserRole
 
 # (slug, name, icon, sort_order, description)
@@ -276,3 +277,153 @@ def seed_reviews(db: Session) -> Tuple[int, int]:
 
     db.flush()
     return created, len(SEED_REVIEWS)
+
+
+# --------------------------------------------------------------------------
+# Owner fixture
+#
+# Without this, a fresh database has no account that owns anything, so the
+# whole owner dashboard renders its empty state and there is nothing to click.
+# This seeds one business owner with two listings - one live, one pending - so
+# both status badges, the reviews page and the leads inbox all have real data.
+# --------------------------------------------------------------------------
+
+SEED_OWNER = {
+    "name": "Nadia Osei",
+    "email": "owner@example.ca",
+    "role": UserRole.business_owner,
+}
+SEED_OWNER_PASSWORD = "ownerpass123"
+
+# An existing approved listing handed to the seed owner. Chosen because it
+# already carries reviews, so the reviews page has something to reply to.
+SEED_OWNED_SLUG = "harbourfront-plumbing"
+
+# A second listing, left pending, so the dashboard shows both states and the
+# "not visible until approved" path is visible without editing anything.
+SEED_PENDING_LISTING = {
+    "slug": "osei-drain-specialists",
+    "name": "Osei Drain Specialists",
+    "category_slug": "plumbers",
+    "city": "Toronto",
+    "address": "77 Carlaw Ave",
+    "postal_code": "M4M 2R6",
+    "latitude": 43.6595,
+    "longitude": -79.3402,
+    "phone": "+1-416-555-0199",
+    "description": "Second location, awaiting review. Drain camera work and root cutting.",
+}
+
+# (enquiry_type, message, contact_name, contact_phone) against SEED_OWNED_SLUG.
+# The message doubles as the natural key for idempotency, since enquiries have
+# no unique constraint of their own.
+SEED_ENQUIRIES = [
+    (EnquiryType.call_click, None, None, None),
+    (EnquiryType.callback, "Kitchen sink backing up, can someone call me this afternoon?",
+     "Ruth Adeyemi", "+1-416-555-0311"),
+    (EnquiryType.quote, "Need a quote for replacing the main stack in a semi.",
+     "Callum Fraser", "+1-647-555-0122"),
+]
+
+
+def seed_owner(db: Session) -> Tuple[User, bool]:
+    """Return the seed business owner, creating it if absent."""
+    from app.core.security import hash_password
+
+    owner = db.scalar(select(User).where(User.email == SEED_OWNER["email"]))
+    if owner is not None:
+        # Re-running after a role change should not silently leave a demo
+        # owner unable to reach the dashboard.
+        if owner.role is not UserRole.business_owner:
+            owner.role = UserRole.business_owner
+            db.flush()
+        return owner, False
+
+    owner = User(hashed_password=hash_password(SEED_OWNER_PASSWORD), **SEED_OWNER)
+    db.add(owner)
+    db.flush()
+    return owner, True
+
+
+def seed_ownership(db: Session, owner: User) -> Tuple[int, bool]:
+    """Give the seed owner one live listing and one pending one.
+
+    Assigns the live listing only when it has no owner, so a real owner
+    claiming it later is never overwritten by a re-run.
+    """
+    assigned = 0
+
+    live = db.scalar(select(Business).where(Business.slug == SEED_OWNED_SLUG))
+    if live is not None and live.owner_id is None:
+        live.owner_id = owner.id
+        assigned += 1
+
+    spec = SEED_PENDING_LISTING
+    pending = db.scalar(select(Business).where(Business.slug == spec["slug"]))
+    created = False
+    if pending is None:
+        category = db.scalar(
+            select(Category).where(Category.slug == spec["category_slug"])
+        )
+        if category is not None:
+            db.add(
+                Business(
+                    slug=spec["slug"],
+                    name=spec["name"],
+                    category_id=category.id,
+                    owner_id=owner.id,
+                    city=spec["city"],
+                    province="ON",
+                    address=spec["address"],
+                    postal_code=spec["postal_code"],
+                    latitude=spec["latitude"],
+                    longitude=spec["longitude"],
+                    phone=spec["phone"],
+                    description=spec["description"],
+                    status=BusinessStatus.pending,
+                    is_active=True,
+                    verified=False,
+                    rating=None,
+                    review_count=0,
+                )
+            )
+            created = True
+    db.flush()
+    return assigned, created
+
+
+def seed_enquiries(db: Session) -> Tuple[int, int]:
+    """Put a few leads against the owner's live listing."""
+    business = db.scalar(select(Business).where(Business.slug == SEED_OWNED_SLUG))
+    if business is None:
+        return 0, len(SEED_ENQUIRIES)
+
+    created = 0
+    for enquiry_type, message, name, phone in SEED_ENQUIRIES:
+        existing = db.scalar(
+            select(Enquiry).where(
+                Enquiry.business_id == business.id,
+                Enquiry.enquiry_type == enquiry_type,
+                # NULL message (a call click) compares by type alone.
+                Enquiry.message.is_(None) if message is None
+                else Enquiry.message == message,
+            )
+        )
+        if existing is not None:
+            continue
+
+        db.add(
+            Enquiry(
+                business_id=business.id,
+                # Anonymous: these model walk-up visitors, not registered users.
+                user_id=None,
+                enquiry_type=enquiry_type,
+                message=message,
+                contact_name=name,
+                contact_phone=phone,
+            )
+        )
+        created += 1
+
+    db.flush()
+    return created, len(SEED_ENQUIRIES)

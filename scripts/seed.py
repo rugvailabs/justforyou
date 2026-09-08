@@ -16,7 +16,16 @@ from sqlalchemy.orm import Session
 
 from app.core.db import SessionLocal
 from app.core.security import hash_password
-from scripts.seed_directory import seed_businesses, seed_categories, seed_reviews
+from scripts.seed_directory import (
+    SEED_OWNER,
+    SEED_OWNER_PASSWORD,
+    seed_businesses,
+    seed_categories,
+    seed_enquiries,
+    seed_ownership,
+    seed_owner,
+    seed_reviews,
+)
 from app.services import storage
 from app.models import (
     Consent,
@@ -208,6 +217,10 @@ def main() -> int:
         categories_created, categories_total = seed_categories(db)
         businesses_created, businesses_total = seed_businesses(db)
         reviews_created, reviews_total = seed_reviews(db)
+        # Ownership last: it needs both the listings and the owner to exist.
+        owner, owner_created = seed_owner(db)
+        assigned, pending_created = seed_ownership(db, owner)
+        enquiries_created, enquiries_total = seed_enquiries(db)
         db.commit()
         # commit() expires attributes and close() detaches the instances, so
         # read everything the summary needs while the session is still open.
@@ -262,6 +275,20 @@ def main() -> int:
         f"             {reviews_created} reviews created, "
         f"{reviews_total - reviews_created} already present "
         f"({reviews_total} total)"
+    )
+    print(
+        f"  Owner    : {SEED_OWNER['name']} <{SEED_OWNER['email']}> - "
+        f"{tag(owner_created)}"
+    )
+    print(f"             password: {SEED_OWNER_PASSWORD} (dev only)")
+    print(
+        f"             {assigned} existing listing assigned, "
+        f"{1 if pending_created else 0} pending listing created"
+    )
+    print(
+        f"             {enquiries_created} enquiries created, "
+        f"{enquiries_total - enquiries_created} already present "
+        f"({enquiries_total} total)"
     )
     return 0
 
