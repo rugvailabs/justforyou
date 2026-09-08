@@ -165,20 +165,35 @@ def seed_businesses(db: Session) -> Tuple[int, int]:
     return created, len(BUSINESSES)
 
 
-# (business slug, reviewer name, reviewer email, rating, title, body)
-# Reviewers are ordinary customer accounts created by the seed so the
-# one-review-per-user constraint has real users behind it.
+# (business slug, reviewer name, reviewer email, rating, title, body, owner_reply)
+#
+# Reviewers are ordinary customer accounts created by the seed, so the
+# one-review-per-user unique constraint has real users behind it.
+#
+# `owner_reply` is None for most. The 2-star entry below carries one on
+# purpose: it is the fixture for "owner replies, and the reply shows on the
+# public listing page", so that path has data without anyone having to click
+# through the dashboard first. A low rating with a reply is also the realistic
+# case - it is the bad reviews owners answer.
 SEED_REVIEWS = [
     ("harbourfront-plumbing", "Priya Raman", "priya.raman@example.ca", 5,
-     "Came out at 11pm", "Burst pipe on a Sunday night and they were here within the hour. Fair price, no fuss."),
+     "Came out at 11pm", "Burst pipe on a Sunday night and they were here within the hour. Fair price, no fuss.",
+     None),
     ("harbourfront-plumbing", "Tom Beckett", "tom.beckett@example.ca", 4,
-     "Solid work, slow to quote", "The repair itself was excellent. Took three days to get the written quote though."),
+     "Solid work, slow to quote", "The repair itself was excellent. Took three days to get the written quote though.",
+     None),
     ("harbourfront-plumbing", "Aisha Noor", "aisha.noor@example.ca", 3,
-     "Fine, but pricey", "Job was done properly. Felt expensive for what turned out to be a 40 minute fix."),
+     "Fine, but pricey", "Job was done properly. Felt expensive for what turned out to be a 40 minute fix.",
+     None),
+    ("harbourfront-plumbing", "Dev Verifier", "dev.verifier@example.ca", 2,
+     "Missed the appointment window", "Booked 9-11am, plumber arrived at 3pm with no call ahead.",
+     "Sorry about the window - that was a dispatch error on our side and we have credited the callout fee."),
     ("queen-west-electric", "Marcus Webb", "marcus.webb@example.ca", 5,
-     "Panel upgrade done right", "ESA paperwork handled, site left spotless. Would use again."),
+     "Panel upgrade done right", "ESA paperwork handled, site left spotless. Would use again.",
+     None),
     ("the-annex-kitchen", "Sofia Marino", "sofia.marino@example.ca", 4,
-     "Lovely room, tight tables", "Food was genuinely excellent. Bring a small bag, it is snug."),
+     "Lovely room, tight tables", "Food was genuinely excellent. Bring a small bag, it is snug.",
+     None),
 ]
 
 SEED_REVIEWER_PASSWORD = "reviewerpass123"
@@ -190,13 +205,15 @@ def seed_reviews(db: Session) -> Tuple[int, int]:
     Idempotent on (business, author). Recomputing the aggregate afterwards is
     what makes the seeded placeholder rating give way to the real one.
     """
+    from datetime import datetime, timezone
+
     from app.core.security import hash_password
     from sqlalchemy import func
 
     created = 0
     touched: set[int] = set()
 
-    for slug, name, email, rating, title, body in SEED_REVIEWS:
+    for slug, name, email, rating, title, body, owner_reply in SEED_REVIEWS:
         business = db.scalar(select(Business).where(Business.slug == slug))
         if business is None:
             continue
@@ -219,6 +236,12 @@ def seed_reviews(db: Session) -> Tuple[int, int]:
             )
         )
         if existing is not None:
+            # Converge on the declared state without clobbering a real reply:
+            # backfill only when the fixture specifies one and the row has
+            # none. An owner's own reply, typed in the dashboard, is left be.
+            if owner_reply is not None and existing.owner_reply is None:
+                existing.owner_reply = owner_reply
+                existing.owner_replied_at = datetime.now(timezone.utc)
             touched.add(business.id)
             continue
 
@@ -229,6 +252,10 @@ def seed_reviews(db: Session) -> Tuple[int, int]:
                 rating=rating,
                 title=title,
                 body=body,
+                owner_reply=owner_reply,
+                owner_replied_at=(
+                    datetime.now(timezone.utc) if owner_reply is not None else None
+                ),
             )
         )
         created += 1
