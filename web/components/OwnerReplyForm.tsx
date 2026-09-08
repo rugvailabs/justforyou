@@ -16,7 +16,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import { FIELD } from "@/components/ui/field";
 
 export default function OwnerReplyForm({
   businessId,
@@ -80,7 +82,7 @@ export default function OwnerReplyForm({
           value={reply}
           onChange={(e) => setReply(e.target.value)}
           placeholder="Thanks for the feedback…"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+          className={FIELD}
         />
       </label>
 
@@ -90,9 +92,7 @@ export default function OwnerReplyForm({
       </p>
 
       {error !== null ? (
-        <p role="alert" className="mt-2 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <Alert tone="error" className="mt-2">{error}</Alert>
       ) : null}
 
       <div className="mt-2">

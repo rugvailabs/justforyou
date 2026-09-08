@@ -12,13 +12,12 @@
 
 import { useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { FIELD } from "@/components/ui/field";
 import type { EnquiryType } from "@/lib/types";
 
-const INPUT =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm " +
-  "focus:border-slate-900 focus:outline-none";
 
 const KINDS: { value: Extract<EnquiryType, "callback" | "quote">; label: string }[] =
   [
@@ -139,7 +138,7 @@ export default function EnquiryForm({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Describe what you need…"
-            className={INPUT}
+            className={FIELD}
           />
         </label>
 
@@ -152,7 +151,7 @@ export default function EnquiryForm({
               maxLength={255}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -164,7 +163,7 @@ export default function EnquiryForm({
               maxLength={32}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -176,7 +175,7 @@ export default function EnquiryForm({
               maxLength={320}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
         </div>
@@ -187,9 +186,7 @@ export default function EnquiryForm({
         </p>
 
         {error !== null ? (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
+          <Alert tone="error">{error}</Alert>
         ) : null}
 
         <div className="flex gap-2">

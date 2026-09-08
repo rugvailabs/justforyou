@@ -5,6 +5,7 @@
  * from the URL, so a result set is shareable and the back button behaves.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import Header from "@/components/Header";
@@ -22,6 +23,36 @@ import type {
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Title and description come from the filters actually applied, so a shared
+ * search link says what it shows rather than "Search" on every variation.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: RawParams;
+}): Promise<Metadata> {
+  const params = toSearchParams(searchParams);
+
+  let subject = "Local businesses";
+  if (params.category_slug) {
+    const categories = await getCategories().catch(() => []);
+    const match = categories.find((c) => c.slug === params.category_slug);
+    subject = match?.name ?? params.category_slug;
+  }
+  if (params.q) subject = `${params.q}`;
+
+  const where = params.city ?? "Metro Vancouver";
+  const title = `${subject} in ${where}`;
+
+  return {
+    title,
+    description:
+      `Find ${subject.toLowerCase()} in ${where}. ` +
+      "Compare ratings, read reviews and contact businesses directly.",
+  };
+}
 
 const PAGE_SIZE = 12;
 

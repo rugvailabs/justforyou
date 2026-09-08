@@ -11,12 +11,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import { FIELD } from "@/components/ui/field";
 import type { PreferredContactMethod, UserResponse } from "@/lib/types";
 
-const INPUT =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm " +
-  "focus:border-slate-900 focus:outline-none";
 
 const CONTACT_METHODS: { value: PreferredContactMethod; label: string }[] = [
   { value: "email", label: "Email" },
@@ -96,7 +95,7 @@ export default function ProfileForm({ user }: { user: UserResponse }): JSX.Eleme
             setName(e.target.value);
             setSaved(false);
           }}
-          className={INPUT}
+          className={FIELD}
         />
       </label>
 
@@ -112,7 +111,7 @@ export default function ProfileForm({ user }: { user: UserResponse }): JSX.Eleme
             setPhone(e.target.value);
             setSaved(false);
           }}
-          className={INPUT}
+          className={FIELD}
         />
       </label>
 
@@ -126,7 +125,7 @@ export default function ProfileForm({ user }: { user: UserResponse }): JSX.Eleme
             setContact(e.target.value as PreferredContactMethod);
             setSaved(false);
           }}
-          className={INPUT}
+          className={FIELD}
         >
           {CONTACT_METHODS.map((m) => (
             <option key={m.value} value={m.value}>
@@ -137,15 +136,11 @@ export default function ProfileForm({ user }: { user: UserResponse }): JSX.Eleme
       </label>
 
       {error !== null ? (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <Alert tone="error">{error}</Alert>
       ) : null}
 
       {saved ? (
-        <p role="status" className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          Saved.
-        </p>
+        <Alert tone="success">Saved.</Alert>
       ) : null}
 
       <Button type="submit" disabled={saving || !dirty}>

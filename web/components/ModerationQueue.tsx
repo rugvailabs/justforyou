@@ -16,8 +16,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import StatusBadge from "@/components/StatusBadge";
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { FIELD } from "@/components/ui/field";
 import type { ModerationAction, ModerationQueueItem } from "@/lib/types";
 
 function formatWhen(iso: string): string {
@@ -104,9 +106,7 @@ export default function ModerationQueue({
   return (
     <>
       {error !== null ? (
-        <p role="alert" className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <Alert tone="error" className="mb-3">{error}</Alert>
       ) : null}
 
       <ul className="space-y-3">
@@ -123,7 +123,7 @@ export default function ModerationQueue({
                       {item.category_name} · {item.city}, {item.province}
                       {item.address !== null ? ` · ${item.address}` : ""}
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="break-words text-sm text-slate-500">
                       Submitted {formatWhen(item.created_at)}
                       {waiting > 0 ? ` · waiting ${waiting}d` : ""}
                       {item.owner_email !== null ? ` · ${item.owner_email}` : " · no owner"}
@@ -143,7 +143,7 @@ export default function ModerationQueue({
                       href={item.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline"
+                      className="break-all underline"
                     >
                       {item.website}
                     </a>
@@ -173,7 +173,7 @@ export default function ModerationQueue({
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         placeholder="The owner will see this…"
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+                        className={FIELD}
                       />
                     </label>
                     <div className="mt-2 flex gap-2">

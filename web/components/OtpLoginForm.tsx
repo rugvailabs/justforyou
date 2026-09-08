@@ -15,11 +15,10 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import { FIELD } from "@/components/ui/field";
 
-const INPUT =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm " +
-  "focus:border-slate-900 focus:outline-none";
 
 /** Digits a real number has, ignoring punctuation. Loose on purpose. */
 const MIN_DIGITS = 7;
@@ -172,7 +171,7 @@ export default function OtpLoginForm({ next }: { next: string }): JSX.Element {
   return (
     <div className="space-y-4">
       {/* Progress. Encodes which step you are on, and lets you go back. */}
-      <ol className="flex items-center gap-2 text-xs font-medium">
+      <ol className="flex flex-wrap items-center gap-2 text-xs font-medium">
         <li
           className={`rounded-full px-2.5 py-1 ${
             step === "phone"
@@ -213,14 +212,12 @@ export default function OtpLoginForm({ next }: { next: string }): JSX.Element {
                 setError(null);
               }}
               placeholder="+1 604 555 0142"
-              className={INPUT}
+              className={FIELD}
             />
           </label>
 
           {error !== null ? (
-            <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
+            <Alert tone="error">{error}</Alert>
           ) : null}
 
           <Button type="submit" disabled={busy} className="w-full">
@@ -239,7 +236,7 @@ export default function OtpLoginForm({ next }: { next: string }): JSX.Element {
                 setError(null);
                 setNotice(null);
               }}
-              className="underline"
+              className="rounded underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
               Change number
             </button>
@@ -259,7 +256,7 @@ export default function OtpLoginForm({ next }: { next: string }): JSX.Element {
                 setError(null);
               }}
               placeholder="123456"
-              className={`${INPUT} tracking-[0.4em]`}
+              className={`${FIELD} tracking-[0.4em]`}
             />
           </label>
 
@@ -274,19 +271,15 @@ export default function OtpLoginForm({ next }: { next: string }): JSX.Element {
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
-              className={INPUT}
+              className={FIELD}
             />
           </label>
 
           {error !== null ? (
-            <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
+            <Alert tone="error">{error}</Alert>
           ) : null}
           {notice !== null && error === null ? (
-            <p role="status" className="rounded bg-slate-100 px-3 py-2 text-sm text-slate-700">
-              {notice}
-            </p>
+            <Alert tone="info">{notice}</Alert>
           ) : null}
 
           <div className="flex gap-2">

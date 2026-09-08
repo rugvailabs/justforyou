@@ -27,7 +27,7 @@ export default function LogoutButton(): JSX.Element {
       type="button"
       onClick={signOut}
       disabled={busy || isPending}
-      className="rounded border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-50"
+      className="rounded border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
     >
       {busy || isPending ? "Signing out..." : "Sign out"}
     </button>

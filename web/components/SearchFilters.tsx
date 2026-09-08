@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
 import Button from "@/components/ui/Button";
+import { SELECT } from "@/components/ui/field";
 import type { Category } from "@/lib/types";
 
 const MIN_RATINGS = [
@@ -31,9 +32,6 @@ const SORTS = [
   { value: "newest", label: "Newest" },
 ];
 
-const SELECT_CLASS =
-  "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm " +
-  "focus:border-slate-900 focus:outline-none";
 
 export default function SearchFilters({
   categories,
@@ -76,7 +74,7 @@ export default function SearchFilters({
         <select
           value={searchParams.get("category") ?? ""}
           onChange={(e) => setParam("category", e.target.value)}
-          className={SELECT_CLASS}
+          className={SELECT}
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -102,7 +100,7 @@ export default function SearchFilters({
               setParam("city", e.currentTarget.value.trim());
             }
           }}
-          className={SELECT_CLASS}
+          className={SELECT}
         />
       </label>
 
@@ -113,7 +111,7 @@ export default function SearchFilters({
         <select
           value={searchParams.get("min_rating") ?? ""}
           onChange={(e) => setParam("min_rating", e.target.value)}
-          className={SELECT_CLASS}
+          className={SELECT}
         >
           {MIN_RATINGS.map((r) => (
             <option key={r.value} value={r.value}>
@@ -128,7 +126,7 @@ export default function SearchFilters({
         <select
           value={searchParams.get("sort") ?? (hasPoint ? "distance" : "relevance")}
           onChange={(e) => setParam("sort", e.target.value)}
-          className={SELECT_CLASS}
+          className={SELECT}
         >
           {sortOptions.map((s) => (
             <option key={s.value} value={s.value}>

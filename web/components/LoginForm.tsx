@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { UserResponse } from "@/lib/types";
+import Alert from "@/components/ui/Alert";
 
 type Mode = "login" | "signup";
 
@@ -93,7 +94,7 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
             setMode("login");
             setError(null);
           }}
-          className={`rounded px-3 py-1 ${
+          className={`rounded px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
             mode === "login" ? "bg-slate-900 text-white" : "border border-slate-300"
           }`}
         >
@@ -105,7 +106,7 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
             setMode("signup");
             setError(null);
           }}
-          className={`rounded px-3 py-1 ${
+          className={`rounded px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
             mode === "signup" ? "bg-slate-900 text-white" : "border border-slate-300"
           }`}
         >
@@ -188,15 +189,13 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
       ) : null}
 
       {error !== null ? (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <Alert tone="error">{error}</Alert>
       ) : null}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+        className="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
       >
         {submitting
           ? "Working..."

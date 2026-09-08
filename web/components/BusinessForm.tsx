@@ -16,8 +16,10 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { FIELD } from "@/components/ui/field";
 import type { BusinessCreate, BusinessDetail, Category } from "@/lib/types";
 
 // Leaflet touches window at import, so it can never be server-rendered.
@@ -42,9 +44,6 @@ const DAYS: { key: string; label: string }[] = [
 
 const PRICE_RANGES = ["", "$", "$$", "$$$", "$$$$"];
 
-const INPUT =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm " +
-  "focus:border-slate-900 focus:outline-none";
 
 type OpeningHours = Record<string, [string, string][]>;
 
@@ -180,7 +179,7 @@ export default function BusinessForm({
             maxLength={255}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className={INPUT}
+            className={FIELD}
           />
         </label>
 
@@ -192,7 +191,7 @@ export default function BusinessForm({
             required
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className={INPUT}
+            className={FIELD}
           >
             <option value="">Choose a category…</option>
             {categories.map((c) => (
@@ -212,7 +211,7 @@ export default function BusinessForm({
             maxLength={5000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className={INPUT}
+            className={FIELD}
           />
         </label>
 
@@ -223,7 +222,7 @@ export default function BusinessForm({
           <select
             value={priceRange}
             onChange={(e) => setPriceRange(e.target.value)}
-            className={INPUT}
+            className={FIELD}
           >
             {PRICE_RANGES.map((p) => (
               <option key={p || "none"} value={p}>
@@ -246,7 +245,7 @@ export default function BusinessForm({
               maxLength={32}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -258,7 +257,7 @@ export default function BusinessForm({
               maxLength={32}
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -270,7 +269,7 @@ export default function BusinessForm({
               maxLength={320}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -282,7 +281,7 @@ export default function BusinessForm({
               placeholder="https://example.com"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
         </div>
@@ -299,7 +298,7 @@ export default function BusinessForm({
               maxLength={255}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -311,7 +310,7 @@ export default function BusinessForm({
               maxLength={128}
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -323,7 +322,7 @@ export default function BusinessForm({
               maxLength={2}
               value={province}
               onChange={(e) => setProvince(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
           <label className="block">
@@ -334,7 +333,7 @@ export default function BusinessForm({
               maxLength={16}
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
-              className={INPUT}
+              className={FIELD}
             />
           </label>
         </div>
@@ -362,7 +361,7 @@ export default function BusinessForm({
                 type="button"
                 onClick={() => setTags(tags.filter((t) => t !== tag))}
                 aria-label={`Remove tag ${tag}`}
-                className="text-slate-500 hover:text-slate-900"
+                className="rounded text-slate-500 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
               >
                 ×
               </button>
@@ -384,7 +383,7 @@ export default function BusinessForm({
               }
             }}
             placeholder="emergency, 24-7…"
-            className={INPUT}
+            className={FIELD}
           />
           <Button type="button" variant="secondary" onClick={addTag}>
             Add
@@ -401,8 +400,8 @@ export default function BusinessForm({
           {DAYS.map(({ key, label }) => {
             const range = dayRange(hours, key);
             return (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-24 text-sm text-slate-700">{label}</span>
+              <div key={key} className="flex flex-wrap items-center gap-2">
+                <span className="w-20 flex-none text-sm text-slate-700 sm:w-24">{label}</span>
                 <input
                   type="time"
                   value={range?.[0] ?? ""}
@@ -423,9 +422,7 @@ export default function BusinessForm({
       </Card>
 
       {error !== null ? (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <Alert tone="error">{error}</Alert>
       ) : null}
 
       {mode === "edit" && listing?.status === "approved" ? (

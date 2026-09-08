@@ -16,7 +16,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import { FIELD } from "@/components/ui/field";
 
 /** Matches the seed data's centre of gravity. */
 const DEFAULT_CITY_PLACEHOLDER = "Vancouver";
@@ -116,7 +118,7 @@ export default function SearchBar({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Plumbers, dentists, restaurants…"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            className={FIELD}
           />
         </label>
 
@@ -127,7 +129,7 @@ export default function SearchBar({
             value={city}
             onChange={(e) => setCity(e.target.value)}
             placeholder={DEFAULT_CITY_PLACEHOLDER}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            className={FIELD}
           />
         </label>
 
@@ -146,9 +148,7 @@ export default function SearchBar({
       </form>
 
       {geoError !== null ? (
-        <p role="status" className="mt-2 text-sm text-amber-700">
-          {geoError}
-        </p>
+        <Alert tone="warning" className="mt-2">{geoError}</Alert>
       ) : null}
     </div>
   );

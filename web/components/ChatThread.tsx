@@ -20,7 +20,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import { FIELD } from "@/components/ui/field";
 import type { ChatMessage } from "@/lib/types";
 
 type Status = "connecting" | "online" | "reconnecting" | "offline";
@@ -271,9 +273,7 @@ export default function ChatThread({
       </div>
 
       {error !== null ? (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <Alert tone="error">{error}</Alert>
       ) : null}
 
       <form onSubmit={onSubmit} className="flex gap-2">
@@ -285,7 +285,7 @@ export default function ChatThread({
             maxLength={4000}
             disabled={!canSend}
             placeholder={canSend ? "Write a message…" : "Waiting for connection…"}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none disabled:bg-slate-50"
+            className={FIELD}
           />
         </label>
         <Button type="submit" disabled={!canSend || !draft.trim()}>
