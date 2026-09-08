@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_current_user, require_owned_business
-from app.models.business import Business, BusinessStatus
+from app.core.visibility import require_visible_business
+from app.models.business import Business
 from app.models.business_review import BusinessReview
 from app.models.user import User
 from app.schemas.directory import (
@@ -69,17 +70,14 @@ def _to_out(review: BusinessReview) -> BusinessReviewOut:
 
 
 def _visible_business(db: Session, business_id: int) -> Business:
-    """A listing the public may read reviews for."""
-    business = db.get(Business, business_id)
-    if (
-        business is None
-        or business.status is not BusinessStatus.approved
-        or not business.is_active
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
-        )
-    return business
+    """A listing the public may read or write reviews for.
+
+    Reviews are part of the public record of a business, so they are gated on
+    exactly the same rule as the listing itself - app/core/visibility.py. A
+    hidden listing whose reviews stay readable leaks both its existence and
+    what people said about it.
+    """
+    return require_visible_business(db, business_id)
 
 
 @router.get("/{business_id}/reviews", response_model=list[BusinessReviewOut])

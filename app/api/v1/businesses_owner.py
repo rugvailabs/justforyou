@@ -25,6 +25,7 @@ from app.core.deps import (
     require_business_owner,
     require_owned_business,
 )
+from app.core.visibility import require_visible_business_by_slug
 from app.models.business import Business, BusinessStatus
 from app.models.category import Category
 from app.models.user import User, UserRole
@@ -93,21 +94,12 @@ def list_my_businesses(
 def get_business_by_slug(slug: str, db: Session = Depends(get_db)) -> BusinessDetail:
     """Public listing detail.
 
-    Approved and active only: an unapproved listing must 404 rather than be
-    readable by anyone who guesses its slug.
+    The same three gates as search - active, approved, KYC-verified - because
+    this is the URL a search result links to. Excluding a listing from every
+    list while leaving it fully readable to anyone who has or guesses its slug
+    is not a gate, it is an inconvenience.
     """
-    business = db.scalar(
-        select(Business).where(
-            Business.slug == slug,
-            Business.status == BusinessStatus.approved,
-            Business.is_active.is_(True),
-        )
-    )
-    if business is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
-        )
-    return _detail(db, business)
+    return _detail(db, require_visible_business_by_slug(db, slug))
 
 
 @router.post("", response_model=BusinessDetail, status_code=status.HTTP_201_CREATED)

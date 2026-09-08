@@ -12,13 +12,14 @@ one business's customer list to another.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_current_user_optional, require_owned_business
-from app.models.business import Business, BusinessStatus
+from app.core.visibility import require_visible_business
+from app.models.business import Business
 from app.models.enquiry import Enquiry, EnquiryType
 from app.models.user import User
 from app.schemas.directory import EnquiryAck, EnquiryCreate, EnquiryOut
@@ -40,18 +41,11 @@ def create_enquiry(
     db: Session = Depends(get_db),
 ) -> Enquiry:
     """Record a lead against a listing. Open to anonymous visitors."""
-    business = db.get(Business, business_id)
-    # Only a publicly visible listing can receive leads. A pending listing is
-    # not reachable by a normal visitor, so an enquiry against one is either a
-    # stale tab or someone poking at ids.
-    if (
-        business is None
-        or business.status is not BusinessStatus.approved
-        or not business.is_active
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
-        )
+    # Only a publicly visible listing can receive leads - the same rule as
+    # search and the detail page. A listing a visitor cannot reach is either a
+    # stale tab or someone poking at ids, and an unverified business must not
+    # collect leads through a page nobody was supposed to see.
+    business = require_visible_business(db, business_id)
 
     enquiry = Enquiry(
         business_id=business.id,

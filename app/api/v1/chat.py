@@ -23,7 +23,8 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_current_user
-from app.models.business import Business, BusinessStatus
+from app.core.visibility import require_visible_business
+from app.models.business import Business
 from app.models.chat import Conversation, Message
 from app.models.user import User
 from app.schemas.chat import (
@@ -151,15 +152,8 @@ def start_conversation(
     Idempotent by design: "message this business" from the profile page must
     reopen the existing thread, not fork the history.
     """
-    business = db.get(Business, payload.business_id)
-    if (
-        business is None
-        or business.status is not BusinessStatus.approved
-        or not business.is_active
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
-        )
+    # Same visibility rule as everywhere else the public reaches a listing.
+    business = require_visible_business(db, payload.business_id)
 
     if business.owner_id == current_user.id:
         raise HTTPException(

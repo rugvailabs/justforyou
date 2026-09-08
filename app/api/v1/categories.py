@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.visibility import visible_businesses
 from app.models.business import Business
 from app.models.category import Category
 from app.schemas.directory import CategoryOut
@@ -29,12 +30,16 @@ def list_categories(
     Public: the directory has to be browsable before anyone signs in.
     """
     # Counted in one grouped subquery rather than per-row correlated counts.
+    #
+    # Counts the listings search would actually return, not merely the active
+    # ones: a tile promising "7 listings" that opens onto 5 results is a bug
+    # report, and the two numbers drift the moment the visibility rule changes
+    # in one place and not the other.
     counts = (
-        select(
+        visible_businesses(
             Business.category_id.label("category_id"),
             func.count(Business.id).label("n"),
         )
-        .where(Business.is_active.is_(True))
         .group_by(Business.category_id)
         .subquery()
     )

@@ -9,9 +9,9 @@ from sqlalchemy import Float, and_, asc, case, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.models.business import Business, BusinessStatus
+from app.models.business import Business
+from app.core.visibility import join_verification, public_visibility_filters
 from app.models.category import Category
-from app.models.verification import BusinessVerification, VerificationStatus
 from app.schemas.directory import BusinessListItem, BusinessSort, SearchResponse
 
 router = APIRouter(prefix="/businesses", tags=["directory"])
@@ -80,22 +80,11 @@ def search_businesses(
 
     distance = _distance_km(lat, lng) if has_point else None
 
-    # Three independent gates, all of which must pass before a listing is
-    # publicly visible:
-    #
-    #   is_active   the owner's own pause switch
-    #   status      moderation - a human read the listing and approved it
-    #   KYC         verification - a human checked the business is real
-    #
-    # The last one is enforced by the INNER JOIN on business_verifications
-    # below rather than by a filter here: a listing that has never submitted
-    # KYC has no row to filter on, and an outer join with a status test would
-    # let it through on NULL.
-    filters = [
-        Business.is_active.is_(True),
-        Business.status == BusinessStatus.approved,
-        BusinessVerification.status == VerificationStatus.verified,
-    ]
+    # active + approved + KYC-verified, defined once in app/core/visibility.py
+    # and applied identically by every public route. The KYC clause needs the
+    # join below: a listing that never submitted KYC has no row to test, and an
+    # outer join would let it through on NULL.
+    filters = list(public_visibility_filters())
 
     needle = _escape_like(q.strip()) if q else ""
     if needle:
@@ -137,12 +126,10 @@ def search_businesses(
 
     total = (
         db.scalar(
-            select(func.count(Business.id))
-            .select_from(Business)
-            .join(Category, Category.id == Business.category_id)
-            .join(
-                BusinessVerification,
-                BusinessVerification.business_id == Business.id,
+            join_verification(
+                select(func.count(Business.id))
+                .select_from(Business)
+                .join(Category, Category.id == Business.category_id)
             )
             .where(where)
         )
@@ -189,17 +176,8 @@ def search_businesses(
         columns.append(distance.label("distance_km"))
 
     rows = db.execute(
-        select(*columns)
-        .join(Category, Category.id == Business.category_id)
-        # INNER JOIN: no KYC row means no listing in search. To make paying
-        # mandatory later, add the same shape here and on the count query
-        # above -
-        #     .join(Subscription, Subscription.business_id == Business.id)
-        # with `Subscription.status == SubscriptionStatus.active` in `filters`.
-        # Deliberately not done: payment is available, not required.
-        .join(
-            BusinessVerification,
-            BusinessVerification.business_id == Business.id,
+        join_verification(
+            select(*columns).join(Category, Category.id == Business.category_id)
         )
         .where(where)
         .order_by(*order)
