@@ -15,9 +15,11 @@ from app.api.v1 import (
     consents,
     otp,
     enquiries,
+    payments,
     profile,
     review,
     submissions,
+    verification,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -33,8 +35,10 @@ api_router.include_router(business_reviews.router)
 api_router.include_router(categories.router)
 api_router.include_router(chat.router)
 api_router.include_router(consents.router)
+api_router.include_router(payments.router)
 api_router.include_router(profile.router)
 api_router.include_router(review.router)
 api_router.include_router(submissions.router)
+api_router.include_router(verification.router)
 
 __all__ = ["api_router"]

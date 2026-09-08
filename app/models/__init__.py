@@ -23,6 +23,13 @@ from app.models.message_sent import (
 from app.models.provider import Provider
 from app.models.review_queue import ReviewDecision, ReviewQueue
 from app.models.submission import InputType, Submission, SubmissionStatus
+from app.models.subscription import (
+    BillingCycle,
+    Plan,
+    Subscription,
+    SubscriptionStatus,
+)
+from app.models.verification import BusinessVerification, VerificationStatus
 from app.models.user import PreferredContactMethod, User, UserRole
 
 __all__ = [
@@ -31,6 +38,12 @@ __all__ = [
     "Business",
     "BusinessStatus",
     "BusinessReview",
+    "BusinessVerification",
+    "VerificationStatus",
+    "BillingCycle",
+    "Plan",
+    "Subscription",
+    "SubscriptionStatus",
     "Category",
     "Consent",
     "ConsentType",

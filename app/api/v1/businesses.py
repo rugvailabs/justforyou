@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models.business import Business, BusinessStatus
 from app.models.category import Category
+from app.models.verification import BusinessVerification, VerificationStatus
 from app.schemas.directory import BusinessListItem, BusinessSort, SearchResponse
 
 router = APIRouter(prefix="/businesses", tags=["directory"])
@@ -79,11 +80,21 @@ def search_businesses(
 
     distance = _distance_km(lat, lng) if has_point else None
 
-    # is_active is the owner's pause switch; status is moderation. A listing
-    # needs both to be publicly visible, and a pending one must never leak.
+    # Three independent gates, all of which must pass before a listing is
+    # publicly visible:
+    #
+    #   is_active   the owner's own pause switch
+    #   status      moderation - a human read the listing and approved it
+    #   KYC         verification - a human checked the business is real
+    #
+    # The last one is enforced by the INNER JOIN on business_verifications
+    # below rather than by a filter here: a listing that has never submitted
+    # KYC has no row to filter on, and an outer join with a status test would
+    # let it through on NULL.
     filters = [
         Business.is_active.is_(True),
         Business.status == BusinessStatus.approved,
+        BusinessVerification.status == VerificationStatus.verified,
     ]
 
     needle = _escape_like(q.strip()) if q else ""
@@ -129,6 +140,10 @@ def search_businesses(
             select(func.count(Business.id))
             .select_from(Business)
             .join(Category, Category.id == Business.category_id)
+            .join(
+                BusinessVerification,
+                BusinessVerification.business_id == Business.id,
+            )
             .where(where)
         )
         or 0
@@ -176,6 +191,16 @@ def search_businesses(
     rows = db.execute(
         select(*columns)
         .join(Category, Category.id == Business.category_id)
+        # INNER JOIN: no KYC row means no listing in search. To make paying
+        # mandatory later, add the same shape here and on the count query
+        # above -
+        #     .join(Subscription, Subscription.business_id == Business.id)
+        # with `Subscription.status == SubscriptionStatus.active` in `filters`.
+        # Deliberately not done: payment is available, not required.
+        .join(
+            BusinessVerification,
+            BusinessVerification.business_id == Business.id,
+        )
         .where(where)
         .order_by(*order)
         .offset((page - 1) * page_size)

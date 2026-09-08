@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     minio_access_key: str
     minio_secret_key: str
     minio_bucket_videos: str
+    #: KYC licence and GST documents. Separate from the video bucket so a
+    #: retention rule on one cannot sweep the other, and so the two can end up
+    #: in different regions or lifecycle policies later.
+    minio_bucket_documents: str = "kyc-documents"
 
     # Malware scanning (ClamAV daemon).
     clamav_host: str = "clamav"
@@ -102,6 +106,19 @@ class Settings(BaseSettings):
     #: There is deliberately no "skip the gate" switch. If you need one for a
     #: load test, raise the threshold to 1.1 so nothing can pass, never the
     #: reverse.
+
+    # --- payments (Stripe) ------------------------------------------------
+    #: Blank means stub mode: /plans, /subscriptions/checkout and the webhook
+    #: all work, subscription rows are created and moved through their states,
+    #: but no money is involved. Fill these in to switch to the real gateway;
+    #: nothing else changes. See app/services/payment_gateway.py.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    #: Handed to the client so it can mount Stripe.js. Publishable by design.
+    stripe_publishable_key: str = ""
+    #: Where the gateway returns the customer when the API caller does not say.
+    stripe_success_url: str = "http://localhost:3001/dashboard?checkout=success"
+    stripe_cancel_url: str = "http://localhost:3001/dashboard?checkout=cancelled"
 
     environment: str = "development"
 

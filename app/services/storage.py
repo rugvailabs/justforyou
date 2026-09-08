@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from functools import lru_cache
 from typing import TYPE_CHECKING, BinaryIO
 
@@ -30,6 +31,22 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_PRESIGN_EXPIRY_SECONDS = 3600
 DEFAULT_CONTENT_TYPE = "audio/webm"
+
+# KYC documents are presigned for upload rather than proxied through the API:
+# a licence scan should not occupy a worker for the length of a mobile upload.
+# They get their own bucket, separate from the submission videos, so a
+# retention rule on one cannot sweep the other.
+DOCUMENT_UPLOAD_EXPIRY_SECONDS = 900  # 15 minutes to finish one PUT
+ALLOWED_DOCUMENT_CONTENT_TYPES: frozenset[str] = frozenset(
+    {"application/pdf", "image/jpeg", "image/png", "image/heic", "image/webp"}
+)
+_DOCUMENT_EXTENSIONS: dict[str, str] = {
+    "application/pdf": ".pdf",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/heic": ".heic",
+    "image/webp": ".webp",
+}
 
 # Server-side encryption applied to the whole bucket. See ensure_bucket().
 _SSE_ALGORITHM = "AES256"
@@ -287,6 +304,150 @@ def generate_presigned_url(
         raise StorageError(f"Failed to presign {key!r}: {exc}") from exc
 
 
+# --------------------------------------------------------------- documents
+
+
+def documents_bucket_name() -> str:
+    return get_settings().minio_bucket_documents
+
+
+def storage_configured() -> bool:
+    """True when object storage has credentials to sign with.
+
+    The spec for this feature says "stub when S3_ACCESS_KEY is unset". This
+    stack's S3-compatible storage is MinIO and its credentials are the
+    MINIO_* settings, so that is what is checked here rather than introducing
+    a second, parallel set of keys that would immediately disagree with the
+    first.
+    """
+    settings = get_settings()
+    return bool(settings.minio_access_key and settings.minio_secret_key)
+
+
+def ensure_documents_bucket() -> bool:
+    """Create the documents bucket if absent. Idempotent.
+
+    Deliberately not called on startup: KYC uploads are rare, and a bucket
+    check on every boot is a startup dependency for a feature most requests
+    never touch. It runs on the first presign instead.
+    """
+    client = get_client()
+    bucket = documents_bucket_name()
+    try:
+        client.head_bucket(Bucket=bucket)
+        return True
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code", "")
+        if code not in {"404", "NoSuchBucket", "NotFound"}:
+            logger.warning("storage: cannot inspect bucket %r: %s", bucket, exc)
+            return False
+    except BotoCoreError as exc:
+        logger.warning("storage: cannot reach object storage: %s", exc)
+        return False
+
+    try:
+        client.create_bucket(Bucket=bucket)
+        logger.info("storage: created documents bucket %r", bucket)
+        return True
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code", "")
+        if code in {"BucketAlreadyOwnedByYou", "BucketAlreadyExists"}:
+            return True
+        logger.warning("storage: could not create bucket %r: %s", bucket, exc)
+        return False
+    except BotoCoreError as exc:
+        logger.warning("storage: could not create bucket %r: %s", bucket, exc)
+        return False
+
+
+def document_key(business_id: int, purpose: str, content_type: str) -> str:
+    """Build the object key for one KYC document.
+
+    Namespaced by business and made unique by a token, so re-uploading a
+    licence never overwrites the copy a reviewer is looking at, and a guessed
+    key belonging to another business does not resolve.
+    """
+    token = uuid.uuid4().hex
+    extension = _DOCUMENT_EXTENSIONS.get(content_type, "")
+    safe_purpose = "".join(c for c in purpose if c.isalnum() or c in "-_")[:32]
+    return f"kyc/{business_id}/{safe_purpose or 'document'}-{token}{extension}"
+
+
+def generate_document_upload_url(
+    key: str,
+    content_type: str,
+    expires_in: int = DOCUMENT_UPLOAD_EXPIRY_SECONDS,
+) -> tuple[str, str, bool]:
+    """Return (upload_url, document_url, is_stub) for one document.
+
+    The upload URL is a presigned PUT: the browser sends the file straight to
+    object storage, and the API never handles the bytes. It expires quickly
+    because it is write access to a specific key.
+
+    The document URL is what gets stored on the verification row. It is the
+    canonical s3:// address rather than a signed link, because a signed link
+    would expire long before a reviewer opens it - the reviewer's client asks
+    for a fresh GET signature at read time.
+
+    When storage is not configured, both come back as stable placeholders and
+    is_stub is True. The shape of the response is identical either way, which
+    is the point: a frontend can be built against this contract before any
+    bucket exists.
+    """
+    bucket = documents_bucket_name()
+    document_url = f"s3://{bucket}/{key}"
+
+    if not storage_configured():
+        logger.info("storage: presign requested with no credentials; returning stub")
+        return (f"https://storage.invalid/stub-upload/{key}", document_url, True)
+
+    if not ensure_documents_bucket():
+        # Storage is configured but unreachable. A stub keeps the frontend
+        # working locally rather than failing a form on infrastructure the
+        # person filling it in cannot fix.
+        logger.warning("storage: documents bucket unavailable; returning stub URL")
+        return (f"https://storage.invalid/stub-upload/{key}", document_url, True)
+
+    try:
+        upload_url = get_presign_client().generate_presigned_url(
+            "put_object",
+            Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
+            ExpiresIn=expires_in,
+        )
+    except (ClientError, BotoCoreError) as exc:
+        raise StorageError(f"Failed to presign upload for {key!r}: {exc}") from exc
+
+    return (upload_url, document_url, False)
+
+
+def generate_document_download_url(
+    document_url: str, expires_in: int = DEFAULT_PRESIGN_EXPIRY_SECONDS
+) -> str | None:
+    """Turn a stored s3:// document URL back into a link a reviewer can open.
+
+    Returns None for anything that is not an s3:// URL in the documents
+    bucket - including the placeholders written in stub mode - so a caller
+    can tell "no document" from "here is a link".
+    """
+    prefix = f"s3://{documents_bucket_name()}/"
+    if not document_url or not document_url.startswith(prefix):
+        return None
+    key = document_url[len(prefix):]
+
+    if not storage_configured():
+        return None
+
+    try:
+        return get_presign_client().generate_presigned_url(
+            "get_object",
+            Params={"Bucket": documents_bucket_name(), "Key": key},
+            ExpiresIn=expires_in,
+        )
+    except (ClientError, BotoCoreError) as exc:
+        logger.warning("storage: could not presign download for %r: %s", key, exc)
+        return None
+
+
 __all__ = [
     "StorageError",
     "bucket_name",
@@ -300,4 +461,12 @@ __all__ = [
     "delete_video",
     "video_exists",
     "generate_presigned_url",
+    "documents_bucket_name",
+    "storage_configured",
+    "ensure_documents_bucket",
+    "document_key",
+    "generate_document_upload_url",
+    "generate_document_download_url",
+    "ALLOWED_DOCUMENT_CONTENT_TYPES",
+    "DOCUMENT_UPLOAD_EXPIRY_SECONDS",
 ]

@@ -24,7 +24,9 @@ from scripts.seed_directory import (
     seed_enquiries,
     seed_ownership,
     seed_owner,
+    seed_plans,
     seed_reviews,
+    seed_verifications,
 )
 from app.services import storage
 from app.models import (
@@ -221,6 +223,10 @@ def main() -> int:
         owner, owner_created = seed_owner(db)
         assigned, pending_created = seed_ownership(db, owner)
         enquiries_created, enquiries_total = seed_enquiries(db)
+        # Verification last of the directory work: it reads every listing's
+        # status, including the pending one seed_ownership just created.
+        verifications_created, verifications_total = seed_verifications(db)
+        plans_created, plans_total = seed_plans(db)
         db.commit()
         # commit() expires attributes and close() detaches the instances, so
         # read everything the summary needs while the session is still open.
@@ -289,6 +295,15 @@ def main() -> int:
         f"             {enquiries_created} enquiries created, "
         f"{enquiries_total - enquiries_created} already present "
         f"({enquiries_total} total)"
+    )
+    print(
+        f"  KYC      : {verifications_created} verification records created, "
+        f"{verifications_total} listings total"
+    )
+    print("             approved listings are marked verified so search sees them")
+    print(
+        f"  Plans    : {plans_created} created, {plans_total} total "
+        "(optional - not required for search visibility)"
     )
     return 0
 

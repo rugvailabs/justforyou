@@ -26,7 +26,9 @@ if TYPE_CHECKING:
     from app.models.business_review import BusinessReview
     from app.models.chat import Conversation
     from app.models.enquiry import Enquiry
+    from app.models.subscription import Subscription
     from app.models.user import User
+    from app.models.verification import BusinessVerification
 
 
 class BusinessStatus(str, enum.Enum):
@@ -164,6 +166,17 @@ class Business(Base):
         back_populates="business", cascade="all, delete-orphan"
     )
     conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
+    # One-to-one: a resubmission updates the existing KYC row rather than
+    # adding a second one, so "the current state" is never ambiguous.
+    verification: Mapped["BusinessVerification | None"] = relationship(
+        back_populates="business", uselist=False, cascade="all, delete-orphan"
+    )
+    # Plural because a business can subscribe, cancel and subscribe again; the
+    # history is worth keeping. Nothing in the directory reads this - paying is
+    # optional and does not affect visibility.
+    subscriptions: Mapped[list["Subscription"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )
 
