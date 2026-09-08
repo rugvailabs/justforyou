@@ -9,8 +9,8 @@
 import Link from "next/link";
 
 import BusinessCard from "@/components/BusinessCard";
+import Header from "@/components/Header";
 import SearchBar from "@/components/SearchBar";
-import LogoutButton from "@/components/LogoutButton";
 import Card from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { ApiError, getCategories, searchBusinesses } from "@/lib/api";
@@ -42,38 +42,7 @@ export default async function HomePage(): Promise<JSX.Element> {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-10 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          {user === null ? (
-            <ButtonLink href="/login" size="sm">
-              Sign in
-            </ButtonLink>
-          ) : (
-            <>
-              <span className="text-slate-600">{user.name}</span>
-              <ButtonLink href="/chat" variant="secondary" size="sm">
-                Messages
-              </ButtonLink>
-              {/* Only owners and admins can open /dashboard, so showing it to
-                  a plain customer just hands them a link that bounces. */}
-              {user.role === "business_owner" || user.role === "admin" || user.is_admin ? (
-                <ButtonLink href="/dashboard" variant="secondary" size="sm">
-                  Dashboard
-                </ButtonLink>
-              ) : null}
-              {user.is_admin ? (
-                <ButtonLink href="/admin" variant="secondary" size="sm">
-                  Admin
-                </ButtonLink>
-              ) : null}
-              <LogoutButton />
-            </>
-          )}
-        </nav>
-      </header>
+      <Header />
 
       <section className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">

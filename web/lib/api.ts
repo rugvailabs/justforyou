@@ -37,6 +37,7 @@ import type {
   ModerationAction,
   ModerationQueueItem,
   ModerationStats,
+  ProfileUpdate,
   LoginRequest,
   SearchResponse,
   SignupRequest,
@@ -600,4 +601,21 @@ export function markConversationRead(
   return apiFetch<Conversation>(`/chat/conversations/${conversationId}/read`, {
     method: "POST",
   });
+}
+
+/* -------------------------------------------------------- profile calls */
+
+/** GET /profile - the signed-in user's own record. */
+export function getProfile(): Promise<UserResponse> {
+  return apiFetch<UserResponse>("/profile", { method: "GET" });
+}
+
+/**
+ * PATCH /profile - update the caller's own details.
+ *
+ * Only name, phone and preferred_contact_method are accepted: email is the
+ * login identity and role is not self-assignable.
+ */
+export function updateProfile(payload: ProfileUpdate): Promise<UserResponse> {
+  return apiFetch<UserResponse>("/profile", { method: "PATCH", body: payload });
 }

@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 
-import LogoutButton from "@/components/LogoutButton";
+import Header from "@/components/Header";
 import StatusBadge from "@/components/StatusBadge";
 import Card from "@/components/ui/Card";
 import RatingStars from "@/components/ui/RatingStars";
@@ -43,18 +43,7 @@ export default async function DashboardPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          <span className="text-slate-600">{user.name}</span>
-          <ButtonLink href="/chat" variant="secondary" size="sm">
-            Messages
-          </ButtonLink>
-          <LogoutButton />
-        </nav>
-      </header>
+      <Header />
 
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>

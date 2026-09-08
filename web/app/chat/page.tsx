@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 
+import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { ApiError, getConversations } from "@/lib/api";
@@ -46,14 +47,7 @@ export default async function ChatListPage(): Promise<JSX.Element> {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <header className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-        <Link href="/" className="text-sm underline">
-          Home
-        </Link>
-      </header>
+      <Header />
 
       <h1 className="text-2xl font-bold tracking-tight text-slate-900">Messages</h1>
       <p className="mt-1 mb-6 text-sm text-slate-600">

@@ -10,7 +10,7 @@
 
 import Link from "next/link";
 
-import LogoutButton from "@/components/LogoutButton";
+import Header from "@/components/Header";
 import ModerationQueue from "@/components/ModerationQueue";
 import Card from "@/components/ui/Card";
 import { ApiError, getModerationQueue, getModerationStats } from "@/lib/api";
@@ -71,15 +71,7 @@ export default async function AdminPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          <span className="text-slate-600">{user.name} · admin</span>
-          <LogoutButton />
-        </nav>
-      </header>
+      <Header />
 
       <h1 className="text-2xl font-bold tracking-tight text-slate-900">
         Listing moderation

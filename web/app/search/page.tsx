@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 
+import Header from "@/components/Header";
 import BusinessCard from "@/components/BusinessCard";
 import SearchBar from "@/components/SearchBar";
 import SearchFilters from "@/components/SearchFilters";
@@ -126,14 +127,7 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-        <Link href="/" className="text-sm underline">
-          Home
-        </Link>
-      </header>
+      <Header />
 
       <SearchBar
         className="mb-6"

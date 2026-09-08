@@ -432,3 +432,18 @@ export interface Conversation {
 export interface ConversationDetail extends Conversation {
   messages: ChatMessage[];
 }
+
+/* ----------------------------------------------------------- profile */
+
+/**
+ * PATCH /profile body. Every field optional; omitted fields are left alone,
+ * while an explicit null clears one.
+ *
+ * Note the API accepts only these three. Email is immutable (it is the login
+ * identity) and role is not self-assignable.
+ */
+export interface ProfileUpdate {
+  name?: string;
+  phone?: string | null;
+  preferred_contact_method?: PreferredContactMethod;
+}
