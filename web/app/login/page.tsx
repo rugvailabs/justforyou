@@ -14,6 +14,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import LoginForm from "@/components/LoginForm";
+import OtpLoginForm from "@/components/OtpLoginForm";
+import Card from "@/components/ui/Card";
 import LogoutButton from "@/components/LogoutButton";
 import { getSession } from "@/lib/auth";
 
@@ -61,9 +63,23 @@ export default function LoginPage({
     <main className="mx-auto max-w-sm px-6 py-16">
       <h1 className="text-2xl font-semibold">Sign in</h1>
       <p className="mt-1 mb-6 text-sm text-slate-600">
-        Use your email and password.
+        Use your phone number, or your email and password.
       </p>
-      <LoginForm next={next} />
+
+      <Card className="mb-6">
+        <OtpLoginForm next={next} />
+      </Card>
+
+      {/* Email/password is kept, not replaced: most accounts have no phone
+          number on file and would otherwise be locked out. */}
+      <details className="rounded-lg border border-slate-200 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-medium text-slate-700">
+          Use email and password instead
+        </summary>
+        <div className="mt-4">
+          <LoginForm next={next} />
+        </div>
+      </details>
     </main>
   );
 }

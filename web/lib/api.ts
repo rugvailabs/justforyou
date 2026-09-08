@@ -37,6 +37,7 @@ import type {
   ModerationAction,
   ModerationQueueItem,
   ModerationStats,
+  OtpRequestAccepted,
   ProfileUpdate,
   LoginRequest,
   SearchResponse,
@@ -618,4 +619,44 @@ export function getProfile(): Promise<UserResponse> {
  */
 export function updateProfile(payload: ProfileUpdate): Promise<UserResponse> {
   return apiFetch<UserResponse>("/profile", { method: "PATCH", body: payload });
+}
+
+/* ------------------------------------------------------------ otp calls */
+
+/**
+ * POST /auth/otp/request - send a one-time code to a phone number.
+ *
+ * The response is deliberately identical whether or not the number is
+ * registered, so this cannot be used to discover which numbers hold accounts.
+ *
+ * @throws {ApiError} 422 for a malformed number, 429 while the resend
+ * cooldown is still running.
+ */
+export function requestOtp(phone: string): Promise<OtpRequestAccepted> {
+  return apiFetch<OtpRequestAccepted>("/auth/otp/request", {
+    method: "POST",
+    body: { phone },
+    auth: false,
+  });
+}
+
+/**
+ * POST /auth/otp/verify - exchange a code for a token.
+ *
+ * `name` is used only when the code creates a new account; a returning user's
+ * existing name is never overwritten.
+ *
+ * @throws {ApiError} 404 no code requested, 410 expired, 400 incorrect,
+ * 429 too many attempts. The status is what distinguishes them.
+ */
+export function verifyOtp(
+  phone: string,
+  code: string,
+  name?: string,
+): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>("/auth/otp/verify", {
+    method: "POST",
+    body: { phone, code, name: name?.trim() || null },
+    auth: false,
+  });
 }

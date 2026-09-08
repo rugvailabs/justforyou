@@ -14,6 +14,7 @@ from app.models.consent import Consent, ConsentType
 from app.models.enquiry import Enquiry, EnquiryType
 from app.models.extracted_problem import ExtractedProblem, Urgency
 from app.models.match import Match, MatchType
+from app.models.otp import OtpCode
 from app.models.message_sent import (
     MessageChannel,
     MessageSent,
@@ -44,6 +45,7 @@ __all__ = [
     "MessageChannel",
     "MessageSent",
     "MessageStatus",
+    "OtpCode",
     "Provider",
     "ReviewQueue",
     "ReviewDecision",

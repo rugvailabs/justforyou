@@ -12,6 +12,7 @@ from app.api.v1 import (
     chat,
     categories,
     consents,
+    otp,
     enquiries,
     profile,
     review,
@@ -21,6 +22,7 @@ from app.api.v1 import (
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(admin_businesses.router)
 api_router.include_router(auth.router)
+api_router.include_router(otp.router)
 api_router.include_router(audit.router)
 api_router.include_router(businesses.router)
 api_router.include_router(businesses_owner.router)

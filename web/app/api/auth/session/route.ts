@@ -23,7 +23,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { ApiError, getMe, login, signup } from "@/lib/api";
+import { ApiError, getMe, login, signup, verifyOtp } from "@/lib/api";
 import {
   ACCESS_TOKEN_COOKIE,
   ACCESS_TOKEN_MAX_AGE,
@@ -36,7 +36,7 @@ import type { PreferredContactMethod, TokenResponse, UserResponse } from "@/lib/
 export const dynamic = "force-dynamic";
 
 interface SessionRequestBody {
-  mode?: "login" | "signup" | "token";
+  mode?: "login" | "signup" | "token" | "otp";
   email?: unknown;
   password?: unknown;
   name?: unknown;
@@ -44,6 +44,8 @@ interface SessionRequestBody {
   preferred_contact_method?: unknown;
   access_token?: unknown;
   role?: unknown;
+  // Shared with signup above; OTP verification reuses `phone`.
+  code?: unknown;
 }
 
 function bad(detail: string, status = 400): NextResponse {
@@ -99,6 +101,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       token = body.access_token;
       if (isTokenExpired(token)) return bad("That token is malformed or expired.", 401);
+    } else if (mode === "otp") {
+      // Phone code sign-in. The backend distinguishes its failure modes by
+      // status (404 none / 410 expired / 400 wrong / 429 throttled), and
+      // those statuses are forwarded untouched so the form can say which.
+      if (!isNonEmptyString(body.phone)) return bad("`phone` is required.");
+      if (!isNonEmptyString(body.code)) return bad("`code` is required.");
+
+      const issued: TokenResponse = await verifyOtp(
+        body.phone,
+        body.code,
+        isNonEmptyString(body.name) ? body.name : undefined,
+      );
+      token = issued.access_token;
     } else if (mode === "signup") {
       if (!isNonEmptyString(body.name)) return bad("`name` is required.");
       if (!isNonEmptyString(body.email)) return bad("`email` is required.");

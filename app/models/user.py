@@ -46,6 +46,14 @@ class User(Base):
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Digits-only form of `phone`, used to resolve an OTP sign-in. Stored
+    # separately because `phone` is the display value and arrives in mixed
+    # formats ("+1-604-555-0101", "6045550101"); comparing those directly
+    # would let one person hold two accounts on one number. UNIQUE, but
+    # nullable - most accounts have no phone at all.
+    phone_normalized: Mapped[str | None] = mapped_column(
+        String(32), nullable=True, unique=True, index=True
+    )
     preferred_contact_method: Mapped[PreferredContactMethod] = mapped_column(
         Enum(
             PreferredContactMethod,

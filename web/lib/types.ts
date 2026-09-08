@@ -447,3 +447,13 @@ export interface ProfileUpdate {
   phone?: string | null;
   preferred_contact_method?: PreferredContactMethod;
 }
+
+/* --------------------------------------------------------------- otp */
+
+/** POST /auth/otp/request response. Identical for known and unknown numbers. */
+export interface OtpRequestAccepted {
+  /** Seconds the code stays valid. */
+  expires_in: number;
+  /** Seconds before another code may be requested. */
+  resend_after: number;
+}
