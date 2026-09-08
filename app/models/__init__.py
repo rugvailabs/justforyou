@@ -9,6 +9,7 @@ from app.models.base import Base
 from app.models.business import Business, BusinessStatus
 from app.models.business_review import BusinessReview
 from app.models.category import Category
+from app.models.chat import Conversation, Message
 from app.models.consent import Consent, ConsentType
 from app.models.enquiry import Enquiry, EnquiryType
 from app.models.extracted_problem import ExtractedProblem, Urgency
@@ -32,6 +33,8 @@ __all__ = [
     "Category",
     "Consent",
     "ConsentType",
+    "Conversation",
+    "Message",
     "Enquiry",
     "EnquiryType",
     "ExtractedProblem",

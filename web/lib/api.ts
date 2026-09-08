@@ -27,6 +27,9 @@ import type {
   BusinessStatus,
   BusinessUpdate,
   Category,
+  ChatMessage,
+  Conversation,
+  ConversationDetail,
   EnquiryAck,
   EnquiryCreate,
   EnquiryOut,
@@ -524,5 +527,77 @@ export function moderateBusiness(
   return apiFetch<BusinessDetail>(`/admin/businesses/${businessId}/${action}`, {
     method: "POST",
     body: reason !== undefined ? { reason } : undefined,
+  });
+}
+
+/* ------------------------------------------------------------ chat calls */
+
+/**
+ * POST /chat/conversations - get-or-create the caller's thread with a listing.
+ *
+ * Idempotent: pressing "Start chat" again reopens the existing thread rather
+ * than forking the history.
+ *
+ * @throws {ApiError} 400 when the caller owns the listing, 404 when it is not
+ * publicly visible.
+ */
+export function startConversation(businessId: number): Promise<Conversation> {
+  return apiFetch<Conversation>("/chat/conversations", {
+    method: "POST",
+    body: { business_id: businessId },
+  });
+}
+
+/** GET /chat/conversations - every thread the caller is in, either side. */
+export function getConversations(): Promise<Conversation[]> {
+  return apiFetch<Conversation[]>("/chat/conversations", { method: "GET" });
+}
+
+/**
+ * GET /chat/conversations/{id} - a thread with its history.
+ *
+ * @throws {ApiError} 404 for a thread the caller is not part of - the
+ * existence of other people's conversations is itself private.
+ */
+export function getConversation(
+  conversationId: number,
+): Promise<ConversationDetail> {
+  return apiFetch<ConversationDetail>(`/chat/conversations/${conversationId}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * GET /chat/conversations/{id}/messages?after_id= - what the caller has not
+ * seen. Ids are monotonic within a thread, so polling needs no clock
+ * agreement between client and server.
+ */
+export function getNewMessages(
+  conversationId: number,
+  afterId: number,
+): Promise<ChatMessage[]> {
+  return apiFetch<ChatMessage[]>(
+    `/chat/conversations/${conversationId}/messages?after_id=${afterId}`,
+    { method: "GET" },
+  );
+}
+
+/** POST /chat/conversations/{id}/messages */
+export function sendMessage(
+  conversationId: number,
+  body: string,
+): Promise<ChatMessage> {
+  return apiFetch<ChatMessage>(`/chat/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: { body },
+  });
+}
+
+/** POST /chat/conversations/{id}/read */
+export function markConversationRead(
+  conversationId: number,
+): Promise<Conversation> {
+  return apiFetch<Conversation>(`/chat/conversations/${conversationId}/read`, {
+    method: "POST",
   });
 }

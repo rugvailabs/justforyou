@@ -49,6 +49,9 @@ export default async function DashboardPage({
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           <span className="text-slate-600">{user.name}</span>
+          <ButtonLink href="/chat" variant="secondary" size="sm">
+            Messages
+          </ButtonLink>
           <LogoutButton />
         </nav>
       </header>

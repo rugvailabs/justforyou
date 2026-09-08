@@ -24,6 +24,7 @@ from app.models.base import Base
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.business_review import BusinessReview
+    from app.models.chat import Conversation
     from app.models.enquiry import Enquiry
     from app.models.user import User
 
@@ -160,6 +161,9 @@ class Business(Base):
         back_populates="business", cascade="all, delete-orphan"
     )
     reviews: Mapped[list["BusinessReview"]] = relationship(
+        back_populates="business", cascade="all, delete-orphan"
+    )
+    conversations: Mapped[list["Conversation"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )
 

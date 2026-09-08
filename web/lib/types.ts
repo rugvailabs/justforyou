@@ -394,3 +394,41 @@ export interface ModerationStats {
 
 /** Verb applied to a listing. `approve` works from any status, so it also reinstates. */
 export type ModerationAction = "approve" | "reject" | "suspend";
+
+/* ------------------------------------------------------------------ chat */
+
+/** One message in a thread. */
+export interface ChatMessage {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  sender_name: string;
+  /** Resolved server-side against the caller, so the UI needn't compare ids. */
+  mine: boolean;
+  body: string;
+  created_at: string;
+}
+
+/**
+ * A thread as one participant sees it.
+ *
+ * Viewer-relative: `other_party_name` and `unread` mean different things to
+ * the customer and the owner, which is what lets one component serve both.
+ */
+export interface Conversation {
+  id: number;
+  business_id: number;
+  business_name: string;
+  business_slug: string;
+  customer_id: number;
+  my_role: "customer" | "owner";
+  other_party_name: string;
+  last_message_at: string;
+  last_message_preview: string | null;
+  unread: number;
+  created_at: string;
+}
+
+export interface ConversationDetail extends Conversation {
+  messages: ChatMessage[];
+}

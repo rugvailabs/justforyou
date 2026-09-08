@@ -54,9 +54,16 @@ export default async function HomePage(): Promise<JSX.Element> {
           ) : (
             <>
               <span className="text-slate-600">{user.name}</span>
-              <ButtonLink href="/dashboard" variant="secondary" size="sm">
-                Dashboard
+              <ButtonLink href="/chat" variant="secondary" size="sm">
+                Messages
               </ButtonLink>
+              {/* Only owners and admins can open /dashboard, so showing it to
+                  a plain customer just hands them a link that bounces. */}
+              {user.role === "business_owner" || user.role === "admin" || user.is_admin ? (
+                <ButtonLink href="/dashboard" variant="secondary" size="sm">
+                  Dashboard
+                </ButtonLink>
+              ) : null}
               {user.is_admin ? (
                 <ButtonLink href="/admin" variant="secondary" size="sm">
                   Admin
