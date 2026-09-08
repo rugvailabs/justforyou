@@ -12,6 +12,7 @@
  * owner does not need to be told why they were let through.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -118,7 +119,14 @@ export default function ModerationQueue({
               <Card className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="font-semibold text-slate-900">{item.name}</h2>
+                    <h2 className="font-semibold text-slate-900">
+                      <Link
+                        href={`/admin/listings/${item.id}`}
+                        className="rounded hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+                      >
+                        {item.name}
+                      </Link>
+                    </h2>
                     <p className="text-sm text-slate-500">
                       {item.category_name} · {item.city}, {item.province}
                       {item.address !== null ? ` · ${item.address}` : ""}

@@ -457,3 +457,36 @@ export interface OtpRequestAccepted {
   /** Seconds before another code may be requested. */
   resend_after: number;
 }
+
+/* --------------------------------------------------------------- admin */
+
+export interface AdminStats {
+  total_businesses: number;
+  pending_listings: number;
+  approved_listings: number;
+  rejected_listings: number;
+  suspended_listings: number;
+  total_users: number;
+  total_reviews: number;
+  total_enquiries: number;
+  total_conversations: number;
+}
+
+/**
+ * A review as a moderator sees it. Carries the author's email, which the
+ * public list withholds - moderating means knowing who wrote something.
+ */
+export interface AdminReviewItem {
+  id: number;
+  business_id: number;
+  business_name: string;
+  business_slug: string;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  owner_reply: string | null;
+  author_id: number;
+  author_name: string;
+  author_email: string;
+  created_at: string;
+}

@@ -302,3 +302,40 @@ class ModerationStats(BaseModel):
     approved: int
     rejected: int
     suspended: int
+
+
+class AdminStats(BaseModel):
+    """Counts for the admin landing page."""
+
+    total_businesses: int
+    pending_listings: int
+    approved_listings: int
+    rejected_listings: int
+    suspended_listings: int
+    total_users: int
+    total_reviews: int
+    total_enquiries: int
+    total_conversations: int
+
+
+class AdminReviewItem(BaseModel):
+    """A review as a moderator sees it.
+
+    Carries the author's email, which the public review list deliberately
+    withholds: moderating means knowing who wrote something.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    business_id: int
+    business_name: str
+    business_slug: str
+    rating: int
+    title: str | None
+    body: str | None
+    owner_reply: str | None
+    author_id: int
+    author_name: str
+    author_email: str
+    created_at: datetime

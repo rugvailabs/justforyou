@@ -15,6 +15,8 @@
 
 import { ACCESS_TOKEN_COOKIE } from "@/lib/cookies";
 import type {
+  AdminReviewItem,
+  AdminStats,
   ApiErrorPayload,
   BusinessCreate,
   BusinessDetail,
@@ -688,3 +690,41 @@ export function getWsTicket(
     { method: "POST" },
   );
 }
+
+/* ------------------------------------------------------- admin overview */
+
+/** GET /admin/stats - counts across the directory. Admin only. */
+export function getAdminStats(): Promise<AdminStats> {
+  return apiFetch<AdminStats>("/admin/stats", { method: "GET" });
+}
+
+/** GET /admin/reviews - every review, newest first, optionally filtered. */
+export function getAllReviews(
+  options: { q?: string; limit?: number; offset?: number } = {},
+): Promise<AdminReviewItem[]> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined && String(value) !== "") qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return apiFetch<AdminReviewItem[]>(`/admin/reviews${suffix ? `?${suffix}` : ""}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * DELETE /admin/reviews/{id} - remove a review and refresh the listing's
+ * rating. Admin only: a business deleting its own bad reviews would make
+ * every rating on the site meaningless.
+ */
+export function deleteReview(reviewId: number): Promise<void> {
+  return apiFetch<void>(`/admin/reviews/${reviewId}`, { method: "DELETE" });
+}
+
+/** Spec-named aliases over the listing moderation endpoints. */
+export const getPendingListings = () => getModerationQueue("pending", { limit: 100 });
+export const approveListing = (id: number) => moderateBusiness(id, "approve");
+export const rejectListing = (id: number, reason: string) =>
+  moderateBusiness(id, "reject", reason);
+export const suspendListing = (id: number, reason: string) =>
+  moderateBusiness(id, "suspend", reason);

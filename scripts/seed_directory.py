@@ -186,7 +186,7 @@ SEED_REVIEWS = [
     ("coal-harbour-plumbing", "Aisha Noor", "aisha.noor@example.ca", 3,
      "Fine, but pricey", "Job was done properly. Felt expensive for what turned out to be a 40 minute fix.",
      None),
-    ("coal-harbour-plumbing", "Dev Verifier", "dev.verifier@example.ca", 2,
+    ("coal-harbour-plumbing", "Elena Novak", "elena.novak@example.ca", 2,
      "Missed the appointment window", "Booked 9-11am, plumber arrived at 3pm with no call ahead.",
      "Sorry about the window - that was a dispatch error on our side and we have credited the callout fee."),
     ("gastown-electric", "Marcus Webb", "marcus.webb@example.ca", 5,

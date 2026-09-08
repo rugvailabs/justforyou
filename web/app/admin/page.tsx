@@ -1,121 +1,141 @@
 /**
- * Admin: directory listing moderation.
+ * Admin landing: the numbers, then the way in to each moderation queue.
  *
- * Replaces the Step 1 stub that only proved the role gate worked.
- *
- * Middleware checks the cached role cookie; requireAdmin() re-checks against
- * /me, which is the check that actually holds. The status filter lives in the
- * URL so a particular queue view is linkable.
+ * Stats first because an admin arrives asking "is there anything waiting?",
+ * not "show me everything". The pending count is the only figure that is a
+ * call to action, so it is the only one styled as one.
  */
 
 import Link from "next/link";
 
 import Header from "@/components/Header";
-import ModerationQueue from "@/components/ModerationQueue";
+import Alert from "@/components/ui/Alert";
 import Card from "@/components/ui/Card";
-import { ApiError, getModerationQueue, getModerationStats } from "@/lib/api";
+import { ButtonLink } from "@/components/ui/Button";
+import { ApiError, getAdminStats } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
-import type {
-  BusinessStatus,
-  ModerationQueueItem,
-  ModerationStats,
-} from "@/lib/types";
+import type { AdminStats } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const TABS: { status: BusinessStatus; label: string }[] = [
-  { status: "pending", label: "Pending" },
-  { status: "approved", label: "Live" },
-  { status: "rejected", label: "Rejected" },
-  { status: "suspended", label: "Suspended" },
-];
-
-function isStatus(value: string | undefined): value is BusinessStatus {
+function Stat({
+  label,
+  value,
+  hint,
+  urgent = false,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  urgent?: boolean;
+}): JSX.Element {
   return (
-    value === "pending" ||
-    value === "approved" ||
-    value === "rejected" ||
-    value === "suspended"
+    <Card className={urgent && value > 0 ? "border-amber-300 bg-amber-50" : undefined}>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-2xl font-bold tabular-nums ${
+          urgent && value > 0 ? "text-amber-900" : "text-slate-900"
+        }`}
+      >
+        {value.toLocaleString("en-CA")}
+      </p>
+      {hint !== undefined ? (
+        <p className="mt-0.5 text-xs text-slate-500">{hint}</p>
+      ) : null}
+    </Card>
   );
 }
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}): Promise<JSX.Element> {
-  const user = await requireAdmin("/admin");
+export default async function AdminHomePage(): Promise<JSX.Element> {
+  await requireAdmin("/admin");
 
-  // Unknown values fall back to the queue rather than erroring.
-  const active: BusinessStatus = isStatus(searchParams.status)
-    ? searchParams.status
-    : "pending";
-
-  let items: ModerationQueueItem[] = [];
-  let stats: ModerationStats | null = null;
+  let stats: AdminStats | null = null;
   let error: string | null = null;
-
   try {
-    [items, stats] = await Promise.all([
-      getModerationQueue(active, { limit: 100 }),
-      getModerationStats(),
-    ]);
+    stats = await getAdminStats();
   } catch (cause) {
     error =
       cause instanceof ApiError
         ? cause.isNetworkError
           ? "The API is not reachable. Is the backend running on port 8000?"
           : cause.message
-        : "Could not load the moderation queue.";
+        : "Could not load the admin overview.";
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-6 py-10">
       <Header />
 
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-        Listing moderation
-      </h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Approve a listing to make it visible in public search. Rejecting or
-        suspending takes a reason, which the owner sees on their dashboard.
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900">Admin</h1>
+      <p className="mt-1 mb-6 text-sm text-slate-600">
+        Directory overview and moderation queues.
       </p>
 
-      <nav className="mt-5 flex flex-wrap gap-2" aria-label="Filter by status">
-        {TABS.map((tab) => {
-          const count = stats?.[tab.status] ?? 0;
-          const selected = tab.status === active;
-          return (
-            <Link
-              key={tab.status}
-              href={`/admin?status=${tab.status}`}
-              aria-current={selected ? "page" : undefined}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                selected
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              {tab.label} ({count})
-            </Link>
-          );
-        })}
-      </nav>
+      {error !== null ? (
+        <Alert tone="error" title="Could not load the overview">
+          {error}
+        </Alert>
+      ) : stats !== null ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat
+              label="Pending review"
+              value={stats.pending_listings}
+              hint={stats.pending_listings > 0 ? "Waiting on you" : "Nothing waiting"}
+              urgent
+            />
+            <Stat label="Live listings" value={stats.approved_listings} hint="In public search" />
+            <Stat label="Total listings" value={stats.total_businesses} />
+            <Stat label="Users" value={stats.total_users} />
+            <Stat label="Reviews" value={stats.total_reviews} />
+            <Stat label="Enquiries" value={stats.total_enquiries} />
+            <Stat label="Conversations" value={stats.total_conversations} />
+            <Stat
+              label="Not visible"
+              value={stats.rejected_listings + stats.suspended_listings}
+              hint={`${stats.rejected_listings} rejected · ${stats.suspended_listings} suspended`}
+            />
+          </div>
 
-      <div className="mt-6">
-        {error !== null ? (
-          <Card className="border-red-200 bg-red-50">
-            <h2 className="font-semibold text-red-800">
-              Could not load the queue
-            </h2>
-            <p className="mt-1 text-sm text-red-700">{error}</p>
-          </Card>
-        ) : (
-          // Keyed on the filter so switching tabs rebuilds the list rather than
-          // reusing the previous tab's optimistic state.
-          <ModerationQueue key={active} items={items} />
-        )}
-      </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <Card>
+              <h2 className="font-semibold text-slate-900">Listings</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Approve, reject or suspend. Approving puts a listing into public
+                search.
+              </p>
+              <div className="mt-3">
+                <ButtonLink href="/admin/listings" size="sm">
+                  {stats.pending_listings > 0
+                    ? `Review ${stats.pending_listings} pending`
+                    : "Browse listings"}
+                </ButtonLink>
+              </div>
+            </Card>
+
+            <Card>
+              <h2 className="font-semibold text-slate-900">Reviews</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Search every review and remove ones that break the rules.
+                Deleting recalculates the listing&apos;s rating.
+              </p>
+              <div className="mt-3">
+                <ButtonLink href="/admin/reviews" variant="secondary" size="sm">
+                  Moderate reviews
+                </ButtonLink>
+              </div>
+            </Card>
+          </div>
+        </>
+      ) : null}
+
+      <p className="mt-8 text-sm text-slate-500">
+        <Link href="/" className="underline">
+          Back to the site
+        </Link>
+      </p>
     </div>
   );
 }
