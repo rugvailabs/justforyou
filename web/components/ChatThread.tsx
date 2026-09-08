@@ -80,6 +80,16 @@ export default function ChatThread({
     );
   }, []);
 
+  /**
+   * Schedule another attempt, or give up.
+   *
+   * Every failure funnels through here - a refused ticket, an unreachable
+   * backend, a dropped socket. Handling only socket-close meant a backend
+   * blip during the ticket fetch offlined the chat permanently, because that
+   * path returned without ever scheduling a retry.
+   */
+  const retryRef = useRef<() => void>(() => {});
+
   const connect = useCallback(async (): Promise<void> => {
     if (closedByUsRef.current) return;
 
@@ -90,9 +100,15 @@ export default function ChatThread({
         body: JSON.stringify({ conversation_id: conversationId }),
       });
       if (!res.ok) {
-        // No ticket means no socket. Say so rather than spinning.
-        setStatus("offline");
-        setError("Could not authorise the live connection.");
+        // 401/403/404 are permanent for this viewer; retrying cannot fix
+        // them. Anything else (502 when the API is down, say) is worth
+        // another go.
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          setStatus("offline");
+          setError("You do not have access to this conversation.");
+          return;
+        }
+        retryRef.current();
         return;
       }
       const { ticket } = (await res.json()) as { ticket: string };
@@ -131,32 +147,39 @@ export default function ChatThread({
       socket.onclose = () => {
         if (closedByUsRef.current) return;
         socketRef.current = null;
-
-        attemptsRef.current += 1;
-        if (attemptsRef.current > MAX_ATTEMPTS) {
-          setStatus("offline");
-          setError(
-            "Lost the live connection. Reload the page to try again — nothing you sent has been lost.",
-          );
-          return;
-        }
-
-        setStatus("reconnecting");
-        const delay = Math.min(
-          BASE_BACKOFF_MS * 2 ** (attemptsRef.current - 1),
-          MAX_BACKOFF_MS,
-        );
-        window.setTimeout(() => void connect(), delay);
+        retryRef.current();
       };
 
       socket.onerror = () => {
         // onclose always follows, and that is where retry is handled.
       };
     } catch {
-      setStatus("offline");
-      setError("Could not open the live connection.");
+      // Network failure reaching our own route handler.
+      retryRef.current();
     }
   }, [conversationId, merge, wsBase]);
+
+  // Wired after connect exists, so the two can reference each other without a
+  // circular useCallback dependency.
+  useEffect(() => {
+    retryRef.current = () => {
+      if (closedByUsRef.current) return;
+      attemptsRef.current += 1;
+      if (attemptsRef.current > MAX_ATTEMPTS) {
+        setStatus("offline");
+        setError(
+          "Lost the live connection. Reload the page to try again - nothing you sent has been lost.",
+        );
+        return;
+      }
+      setStatus("reconnecting");
+      const delay = Math.min(
+        BASE_BACKOFF_MS * 2 ** (attemptsRef.current - 1),
+        MAX_BACKOFF_MS,
+      );
+      window.setTimeout(() => void connect(), delay);
+    };
+  }, [connect]);
 
   // Read the current user id inside the socket callback without making the
   // callback depend on it (which would tear the socket down on first message).
