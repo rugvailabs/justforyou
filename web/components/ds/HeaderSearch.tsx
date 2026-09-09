@@ -63,7 +63,10 @@ export default function HeaderSearch({
 
       <div className="hidden w-px shrink-0 bg-line sm:block" aria-hidden="true" />
 
-      <div className="hidden min-w-0 flex-1 items-center gap-2 px-3 sm:flex">
+      {/* Fixed width rather than an equal share: What is the field people
+          type into, and an even split squeezed Where until its placeholder
+          was cut off by the submit button. */}
+      <div className="hidden min-w-0 shrink-0 items-center gap-2 px-3 sm:flex sm:w-52">
         <MapPin className="size-4 shrink-0 text-ink-faint" aria-hidden="true" />
         <input
           value={where}

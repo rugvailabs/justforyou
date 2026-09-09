@@ -2,19 +2,35 @@
  * /search - results for whatever the query string says.
  *
  * searchParams is the only input: filters, sort, geo point and page all come
- * from the URL, so a result set is shareable and the back button behaves.
+ * from the URL, so a result set is shareable and the back button behaves. The
+ * parsing below is unchanged from Step 2 - it guards the same rules the API
+ * enforces, so a stale ?sort=distance in a shared link degrades instead of
+ * 422-ing.
+ *
+ * The layout is three columns on a wide screen: filters, results, map. The map
+ * is last in the DOM as well as on the right, so a screen reader and a
+ * keyboard reach the results first - it is a supplement to the list, not the
+ * subject of the page.
+ *
+ * There is no sponsored slot. The design calls for one and maps it to an
+ * `is_featured` field; no such column exists on businesses and nothing in the
+ * API returns one, so there is nothing to promote and no honest way to fill it.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 
-import Header from "@/components/Header";
-import BusinessCard from "@/components/BusinessCard";
-import SearchBar from "@/components/SearchBar";
-import SearchFilters from "@/components/SearchFilters";
-import Card from "@/components/ui/Card";
-import { ButtonLink } from "@/components/ui/Button";
+import ListingCard from "@/components/ds/ListingCard";
+import ResultsMap from "@/components/ds/ResultsMap";
+import SearchFilterRail from "@/components/ds/SearchFilterRail";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
+import { Breadcrumbs, EmptyState } from "@/components/ds/feedback";
+import { Button, Card } from "@/components/ds/primitives";
 import { ApiError, getCategories, searchBusinesses } from "@/lib/api";
+import { formatCount } from "@/lib/format";
+import { DEFAULT_LOCALE, INTL_LOCALE } from "@/lib/i18n";
 import type {
   BusinessSearchParams,
   BusinessSort,
@@ -23,6 +39,9 @@ import type {
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const locale = DEFAULT_LOCALE;
+const intl = INTL_LOCALE[locale];
 
 /**
  * Title and description come from the filters actually applied, so a shared
@@ -155,98 +174,147 @@ export default async function SearchPage({
     : null;
 
   const page = results?.page ?? params.page ?? 1;
+  const categoryName = categories.find((c) => c.slug === params.category_slug)?.name;
+
+  // The h1 states what was actually searched, so a shared link reads as its
+  // own page rather than as "Search" with different contents.
+  const subject = params.q ?? categoryName ?? "Local businesses";
+  const where = params.city ?? "Metro Vancouver";
+
+  const items = results?.items ?? [];
+  const mappable = items.filter(
+    (business) => business.latitude !== null && business.longitude !== null,
+  ).length;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <Header />
+    <>
+      <SiteHeader locale={locale} />
 
-      <SearchBar
-        className="mb-6"
-        initialQuery={params.q ?? ""}
-        initialCity={params.city ?? ""}
-      />
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Search", href: "/search" },
+            ...(categoryName !== undefined ? [{ label: categoryName }] : []),
+          ]}
+        />
 
-      <div className="mb-6">
-        <SearchFilters categories={categories} />
-      </div>
-
-      {errorMessage !== null ? (
-        <Card className="border-red-200 bg-red-50">
-          <h2 className="font-semibold text-red-800">Search failed</h2>
-          <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
-          <div className="mt-3">
-            <ButtonLink href="/search" variant="secondary" size="sm">
-              Reset search
-            </ButtonLink>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h1 className="text-page-title text-ink">
+              {subject} in {where}
+            </h1>
+            {results !== null ? (
+              <p className="mt-1 text-body text-ink-muted">
+                <span className="tabular">{formatCount(results.total, intl)}</span>{" "}
+                {results.total === 1 ? "listing" : "listings"}
+                {params.lat !== undefined ? " near you" : ""}
+                {results.total_pages > 1
+                  ? ` · page ${results.page} of ${results.total_pages}`
+                  : ""}
+              </p>
+            ) : null}
           </div>
-        </Card>
-      ) : results !== null && results.total === 0 ? (
-        <Card>
-          <h2 className="font-semibold text-slate-900">No matches</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Nothing matched those filters. Try a broader search - remove the
-            city, lower the minimum rating, or widen the category.
-          </p>
-          <div className="mt-3">
-            <ButtonLink href="/search" variant="secondary" size="sm">
-              Clear all filters
-            </ButtonLink>
+        </div>
+
+        <div className="mt-5 grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)_22rem]">
+          {/* ------------------------------------------------------ filters */}
+          <aside className="lg:sticky lg:top-20 lg:self-start">
+            <SearchFilterRail categories={categories} locale={locale} />
+          </aside>
+
+          {/* ------------------------------------------------------ results */}
+          <div className="min-w-0">
+            {errorMessage !== null ? (
+              <Card className="border-danger/30 bg-danger-bg p-5">
+                <h2 className="text-card-title text-danger">Search failed</h2>
+                <p className="mt-1 text-body text-danger">{errorMessage}</p>
+                <div className="mt-3">
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href="/search">Reset search</Link>
+                  </Button>
+                </div>
+              </Card>
+            ) : results !== null && results.total === 0 ? (
+              <EmptyState
+                title="No listings match that"
+                body="Try a broader search - remove the city, lower the minimum rating, or widen the category."
+                action={{ label: "Clear all filters", href: "/search" }}
+              />
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {items.map((business) => (
+                    <ListingCard
+                      key={business.id}
+                      business={business}
+                      locale={locale}
+                    />
+                  ))}
+                </div>
+
+                {results !== null && results.total_pages > 1 ? (
+                  <nav
+                    aria-label="Pagination"
+                    className="mt-6 flex items-center justify-between gap-3"
+                  >
+                    {results.has_prev ? (
+                      <Button asChild variant="secondary" size="sm">
+                        <Link href={urlWith(searchParams, "page", String(page - 1))}>
+                          ← Previous
+                        </Link>
+                      </Button>
+                    ) : (
+                      <span />
+                    )}
+
+                    <span className="text-meta tabular text-ink-subtle">
+                      Page {results.page} of {results.total_pages}
+                    </span>
+
+                    {results.has_next ? (
+                      <Button asChild variant="secondary" size="sm">
+                        <Link href={urlWith(searchParams, "page", String(page + 1))}>
+                          Next →
+                        </Link>
+                      </Button>
+                    ) : (
+                      <span />
+                    )}
+                  </nav>
+                ) : null}
+              </>
+            )}
           </div>
-        </Card>
-      ) : results !== null ? (
-        <>
-          <p className="mb-3 text-sm text-slate-600">
-            {results.total.toLocaleString("en-CA")}{" "}
-            {results.total === 1 ? "result" : "results"}
-            {params.q ? ` for “${params.q}”` : ""}
-            {params.city ? ` in ${params.city}` : ""}
-            {results.total_pages > 1
-              ? ` · page ${results.page} of ${results.total_pages}`
-              : ""}
-          </p>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {results.items.map((business) => (
-              <BusinessCard key={business.id} business={business} />
-            ))}
-          </div>
+          {/* ---------------------------------------------------------- map */}
+          <aside className="hidden xl:block">
+            <div className="sticky top-20 overflow-hidden rounded-card border border-line bg-surface shadow-raised">
+              <div className="h-[28rem]">
+                {mappable > 0 ? (
+                  <ResultsMap businesses={items} />
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-muted px-6 text-center">
+                    <MapPin className="size-5 text-ink-faint" aria-hidden="true" />
+                    <p className="text-meta text-ink-subtle">
+                      No results on this page have coordinates yet.
+                    </p>
+                  </div>
+                )}
+              </div>
+              {mappable > 0 ? (
+                <p className="border-t border-line px-3 py-2 text-meta text-ink-subtle">
+                  <span className="tabular">{mappable}</span> of{" "}
+                  <span className="tabular">{items.length}</span> on this page are
+                  mapped.
+                </p>
+              ) : null}
+            </div>
+          </aside>
+        </div>
+      </main>
 
-          {results.total_pages > 1 ? (
-            <nav
-              aria-label="Pagination"
-              className="mt-8 flex items-center justify-between"
-            >
-              {results.has_prev ? (
-                <ButtonLink
-                  href={urlWith(searchParams, "page", String(page - 1))}
-                  variant="secondary"
-                  size="sm"
-                >
-                  ← Previous
-                </ButtonLink>
-              ) : (
-                <span />
-              )}
-
-              <span className="text-sm text-slate-600">
-                Page {results.page} of {results.total_pages}
-              </span>
-
-              {results.has_next ? (
-                <ButtonLink
-                  href={urlWith(searchParams, "page", String(page + 1))}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Next →
-                </ButtonLink>
-              ) : (
-                <span />
-              )}
-            </nav>
-          ) : null}
-        </>
-      ) : null}
-    </div>
+      <SiteFooter locale={locale} />
+    </>
   );
 }
