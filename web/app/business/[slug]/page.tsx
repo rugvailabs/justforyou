@@ -38,6 +38,7 @@ import { Globe, MapPin, MessageSquare } from "lucide-react";
 import BusinessHours from "@/components/ds/BusinessHours";
 import EnquiryPanel from "@/components/ds/EnquiryPanel";
 import RatingBreakdown from "@/components/ds/RatingBreakdown";
+import ReviewForm from "@/components/ds/ReviewForm";
 import ShowNumber from "@/components/ds/ShowNumber";
 import SiteFooter from "@/components/ds/SiteFooter";
 import SiteHeader from "@/components/ds/SiteHeader";
@@ -46,6 +47,7 @@ import { OpenStatus, RatingPill, VerifiedBadge } from "@/components/ds/indicator
 import { Badge, Button, Card } from "@/components/ds/primitives";
 import MapEmbed from "@/components/MapEmbed";
 import { getBusinessBySlug, getReviewSummary, getReviews } from "@/lib/api";
+import { getCurrentUser } from "@/lib/auth";
 import {
   formatDate,
   formatLocality,
@@ -108,6 +110,19 @@ export default async function BusinessPage({
 
   // The histogram is only honest when it has something in it.
   const showBreakdown = summary !== null && summary.review_count > 0;
+
+  // Who is looking decides which of four things the reviews section offers.
+  // Resolved here rather than in the form so a signed-out visitor is invited
+  // to sign in instead of being handed a form that cannot submit.
+  const viewer = await getCurrentUser();
+  const ownsThis = viewer !== null && business.owner_id === viewer.id;
+  // Only as reliable as the page of reviews we fetched: a viewer whose review
+  // has fallen past the newest 20 reads as not-yet-reviewed and is offered the
+  // form. The backend's unique constraint is the real guard - it answers 409,
+  // and the form shows that verbatim.
+  const alreadyReviewed =
+    viewer !== null && reviews.some((review) => review.author_id === viewer.id);
+  const canReview = viewer !== null && !ownsThis && !alreadyReviewed;
 
   return (
     <>
@@ -305,6 +320,36 @@ export default async function BusinessPage({
                   <RatingBreakdown summary={summary} locale={locale} />
                 </Card>
               ) : null}
+
+              {/* An owner reviewing their own listing is self-dealing, and the
+                  backend refuses it - so the form is simply not offered
+                  rather than shown and then rejected. */}
+              <div id="review" className="mt-3 scroll-mt-24">
+                {canReview ? (
+                  <ReviewForm
+                    businessId={business.id}
+                    businessName={business.name}
+                  />
+                ) : viewer === null ? (
+                  <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <p className="text-body text-ink-muted">
+                      Been here? Sign in to leave a review.
+                    </p>
+                    <Button asChild variant="secondary" size="sm">
+                      <Link
+                        href={`/login?next=${encodeURIComponent(`/business/${business.slug}#review`)}`}
+                      >
+                        Sign in
+                      </Link>
+                    </Button>
+                  </Card>
+                ) : alreadyReviewed ? (
+                  <p className="text-meta text-ink-subtle">
+                    You have already reviewed this business. Your review is
+                    below.
+                  </p>
+                ) : null}
+              </div>
 
               {reviews.length === 0 ? (
                 <EmptyState
