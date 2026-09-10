@@ -124,6 +124,27 @@ export function formatRating(rating: number | null | undefined): string | null {
   return rating.toFixed(1);
 }
 
+/**
+ * "North Vancouver" -> "north-vancouver", for /[province]/[city]/[category].
+ *
+ * Lives here rather than in that route's page.tsx because a Next route file
+ * may only export a fixed set of names (default, metadata, generateMetadata,
+ * dynamic and friends). Exporting a helper from one compiles under `tsc` and
+ * then fails the build, which is a slow way to find out.
+ */
+export function citySlug(city: string): string {
+  return city.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/** The inverse: "north-vancouver" -> "North Vancouver". */
+export function cityFromSlug(slug: string): string {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 /** "Vancouver, BC" - the city line every card and profile shows. */
 export function formatLocality(
   city: string | null | undefined,
