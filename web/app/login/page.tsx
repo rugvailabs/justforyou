@@ -1,6 +1,11 @@
 /**
  * /login - the only unauthenticated entry point.
  *
+ * Phone one-time-code sign-in used to lead this page, with email and password
+ * folded away behind a <details>. That is reversed - removed, rather than
+ * reordered: there is one way in, an email and a password, and the form is the
+ * page. A mobile number is collected at sign-up as a contact detail.
+ *
  * Two distinct cases arrive here, and conflating them causes a redirect loop:
  *
  *   - Signed out: render the form. `next` is carried on the form submit.
@@ -14,12 +19,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import LoginForm from "@/components/LoginForm";
-import OtpLoginForm from "@/components/OtpLoginForm";
-import Card from "@/components/ui/Card";
 import LogoutButton from "@/components/LogoutButton";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
+import { Button, Card } from "@/components/ds/primitives";
 import { getSession } from "@/lib/auth";
+import { DEFAULT_LOCALE } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
+
+const locale = DEFAULT_LOCALE;
 
 export default function LoginPage({
   searchParams,
@@ -39,47 +48,51 @@ export default function LoginPage({
 
     // Signed in but not permitted. Dead end by design - no `next` redirect.
     return (
-      <main className="mx-auto max-w-sm px-6 py-16">
-        <h1 className="text-2xl font-semibold">Not authorised</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Your account does not have access to{" "}
-          <code className="rounded bg-slate-200 px-1">{next || "that page"}</code>.
-          Sign in with an administrator account to continue.
-        </p>
-        <div className="mt-6 flex items-center gap-3">
-          <Link
-            href="/"
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            Home
-          </Link>
-          <LogoutButton />
-        </div>
-      </main>
+      <>
+        {/* @ts-expect-error Async Server Component in a sync parent - allowed
+            in the App Router, not yet expressible in the type system. */}
+        <SiteHeader locale={locale} showSearch={false} />
+
+        <main className="mx-auto max-w-md px-4 py-section sm:px-6">
+          <Card className="p-6">
+            <h1 className="text-page-title text-ink">Not authorised</h1>
+            <p className="mt-2 text-body text-ink-muted">
+              Your account does not have access to{" "}
+              <code className="rounded-sm bg-surface-muted px-1 text-ink">
+                {next || "that page"}
+              </code>
+              . Sign in with an administrator account to continue.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <Button asChild>
+                <Link href="/">Home</Link>
+              </Button>
+              <LogoutButton />
+            </div>
+          </Card>
+        </main>
+
+        <SiteFooter locale={locale} />
+      </>
     );
   }
 
   return (
-    <main className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="text-2xl font-semibold">Sign in</h1>
-      <p className="mt-1 mb-6 text-sm text-slate-600">
-        Use your phone number, or your email and password.
-      </p>
+    <>
+      <SiteHeader locale={locale} showSearch={false} />
 
-      <Card className="mb-6">
-        <OtpLoginForm next={next} />
-      </Card>
+      <main className="mx-auto max-w-md px-4 py-section sm:px-6">
+        <h1 className="text-page-title text-ink">Sign in</h1>
+        <p className="mt-1 text-body text-ink-muted">
+          Use your email and password. Creating an account takes a moment.
+        </p>
 
-      {/* Email/password is kept, not replaced: most accounts have no phone
-          number on file and would otherwise be locked out. */}
-      <details className="rounded-lg border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-medium text-slate-700">
-          Use email and password instead
-        </summary>
-        <div className="mt-4">
+        <Card className="mt-6 p-6">
           <LoginForm next={next} />
-        </div>
-      </details>
-    </main>
+        </Card>
+      </main>
+
+      <SiteFooter locale={locale} />
+    </>
   );
 }

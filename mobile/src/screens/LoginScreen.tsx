@@ -1,23 +1,25 @@
 /**
- * Sign in with a phone number and a one-time code.
+ * Sign in, or create an account, with an email and a password.
  *
- * Same two steps and the same rules as the web form: the request response is
- * identical for known and unknown numbers, the resend button is disabled for
- * the cooldown the server hands back, and the four failure modes are told
- * apart by HTTP status rather than by parsing the message - 404 no code was
- * requested, 410 expired, 400 wrong, 429 too many tries.
+ * This screen used to be a two-step phone/one-time-code flow, which was the
+ * app's only way in. That is removed: there is one credential pair now, the
+ * same one the web app uses, and a mobile number is a contact detail collected
+ * at sign-up rather than a way to authenticate.
  *
  * On success the token goes to the OS keystore, which is the whole difference
- * between this screen and its web counterpart.
+ * between this screen and its web counterpart - the web app puts it in an
+ * httpOnly cookie because a browser cannot keep a secret any other way.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -27,20 +29,31 @@ import Button from "../components/Button";
 import Card from "../components/Card";
 import Field from "../components/Field";
 import { errorMessage } from "../components/States";
-import { ApiError, requestOtp, verifyOtp } from "../lib/api";
+import { ApiError, login, signup } from "../lib/api";
 import { useSession } from "../lib/session";
-import { color, space, type } from "../theme";
+import { color, radius, space, type } from "../theme";
 import type { AccountStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AccountStackParamList, "Login">;
 
-/** The backend wants 10 digits, or 11 starting with 1. Check before spending a code. */
-function phoneProblem(input: string): string | null {
-  const digits = input.replace(/\D/g, "");
-  if (digits === "") return "Enter your phone number.";
-  if (digits.length === 10) return null;
-  if (digits.length === 11 && digits.startsWith("1")) return null;
-  return "That does not look like a Canadian number. Use 10 digits, e.g. 604 555 0142.";
+type Mode = "login" | "signup";
+
+/** Checked here only to save a round trip; the backend enforces all of it. */
+function problemWith(
+  mode: Mode,
+  fields: { name: string; email: string; password: string; phone: string },
+): string | null {
+  if (!fields.email.includes("@")) return "Enter your email address.";
+  if (fields.password.length === 0) return "Enter your password.";
+  if (mode === "login") return null;
+
+  if (fields.name.trim() === "") return "Enter your name.";
+  // 8-72 is what the backend accepts; bcrypt truncates past 72 bytes.
+  if (fields.password.length < 8) return "Your password needs at least 8 characters.";
+  if (fields.phone.replace(/\D/g, "").length < 10) {
+    return "Enter your mobile number, 10 digits - e.g. 604 555 0142.";
+  }
+  return null;
 }
 
 export default function LoginScreen({
@@ -50,95 +63,59 @@ export default function LoginScreen({
   const { signIn } = useSession();
   const reason = route.params?.reason;
 
-  const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+  const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
 
-  // The server enforces the real limit; this only keeps the button honest.
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((seconds) => seconds - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
+  const passwordInput = useRef<TextInput>(null);
 
-  const codeInput = useRef<React.ComponentRef<typeof Field>>(null);
-
-  const sendCode = useCallback(
-    async (resend: boolean): Promise<void> => {
-      const problem = phoneProblem(phone);
-      if (problem !== null) {
-        setError(problem);
-        return;
-      }
-
-      setBusy(true);
-      setError(null);
-      try {
-        const accepted = await requestOtp(phone.trim());
-        setCooldown(accepted.resend_after || 30);
-        setStep("code");
-        setNotice(
-          resend
-            ? "A new code is on its way."
-            : "We sent a 6-digit code to that number.",
-        );
-      } catch (cause) {
-        if (cause instanceof ApiError && cause.status === 429) {
-          // Already sent one recently: move to the code step rather than
-          // stranding someone who has the code sitting on their lock screen.
-          setStep("code");
-          setCooldown(30);
-          setNotice("A code was already sent. Check your messages.");
-        } else {
-          setError(errorMessage(cause, "Could not send a code."));
-        }
-      } finally {
-        setBusy(false);
-      }
-    },
-    [phone],
-  );
-
-  const submitCode = useCallback(async (): Promise<void> => {
-    const digits = code.replace(/\D/g, "");
-    if (digits.length !== 6) {
-      setError("Enter the 6-digit code.");
+  const submit = useCallback(async (): Promise<void> => {
+    const problem = problemWith(mode, { name, email, password, phone });
+    if (problem !== null) {
+      setError(problem);
       return;
     }
 
     setBusy(true);
     setError(null);
     try {
-      const token = await verifyOtp(phone.trim(), digits, name);
+      const token =
+        mode === "signup"
+          ? await signup({
+              name: name.trim(),
+              email: email.trim(),
+              password,
+              phone: phone.trim(),
+              role: "customer",
+            })
+          : await login({ email: email.trim(), password });
+
       await signIn(token.access_token);
       // The session flip re-renders the tab bar; drop the login screen so Back
       // does not return to a form that no longer applies.
       navigation.goBack();
     } catch (cause) {
       if (cause instanceof ApiError) {
-        if (cause.status === 410) {
-          setError("That code has expired. Ask for a new one.");
-        } else if (cause.status === 404) {
-          setError("No code was requested for that number. Send one first.");
-        } else if (cause.status === 429) {
-          setError("Too many attempts. Ask for a new code.");
-        } else if (cause.status === 400) {
-          setError("That code is not right. Check the digits and try again.");
+        if (cause.status === 401) {
+          setError("That email and password do not match an account.");
+        } else if (cause.status === 409) {
+          setError("An account already exists for that email. Sign in instead.");
         } else {
-          setError(errorMessage(cause, "Could not verify that code."));
+          setError(errorMessage(cause, "Could not sign you in."));
         }
       } else {
-        setError("Could not verify that code.");
+        setError("Could not reach the server. Please try again.");
       }
     } finally {
       setBusy(false);
     }
-  }, [code, phone, name, signIn, navigation]);
+  }, [mode, name, email, password, phone, signIn, navigation]);
+
+  const isSignup = mode === "signup";
 
   return (
     <KeyboardAvoidingView
@@ -149,104 +126,107 @@ export default function LoginScreen({
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Sign in</Text>
+        <Text style={styles.title}>{isSignup ? "Create an account" : "Sign in"}</Text>
         <Text style={styles.lede}>
-          Use your phone number. We will text you a 6-digit code.
+          {isSignup
+            ? "Your email and password are how you sign in. Your mobile number is how a business reaches you."
+            : "Use the email and password you registered with."}
         </Text>
 
         {reason !== undefined ? <Alert tone="info">{reason}</Alert> : null}
 
         <Card style={styles.card}>
-          <View style={styles.steps}>
-            <Text style={[styles.step, step === "phone" && styles.stepOn]}>
-              1 · Your number
-            </Text>
-            <Text style={styles.stepDash}>—</Text>
-            <Text style={[styles.step, step === "code" && styles.stepOn]}>
-              2 · Enter code
-            </Text>
+          {/* Two modes of one form: what you have typed survives the switch. */}
+          <View style={styles.tabs}>
+            {(
+              [
+                ["login", "Sign in"],
+                ["signup", "Create account"],
+              ] as [Mode, string][]
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === value }}
+                onPress={() => {
+                  setMode(value);
+                  setError(null);
+                }}
+                style={[styles.tab, mode === value && styles.tabOn]}
+              >
+                <Text style={[styles.tabText, mode === value && styles.tabTextOn]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
 
-          {step === "phone" ? (
-            <>
-              <Field
-                label="Phone number"
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="+1 604 555 0142"
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                textContentType="telephoneNumber"
-                returnKeyType="send"
-                onSubmitEditing={() => void sendCode(false)}
-              />
-              {error !== null ? <Alert tone="error">{error}</Alert> : null}
-              <Button block busy={busy} onPress={() => void sendCode(false)}>
-                Send me a code
-              </Button>
-            </>
-          ) : (
-            <>
-              <Text style={styles.sentTo}>
-                Code sent to {phone.trim()}.{" "}
-                <Text
-                  style={styles.link}
-                  onPress={() => {
-                    setStep("phone");
-                    setError(null);
-                    setNotice(null);
-                  }}
-                >
-                  Change number
-                </Text>
-              </Text>
+          {isSignup ? (
+            <Field
+              label="Your name"
+              value={name}
+              onChangeText={setName}
+              placeholder="Nadia Osei"
+              autoComplete="name"
+              textContentType="name"
+              returnKeyType="next"
+            />
+          ) : null}
 
-              <Field
-                ref={codeInput}
-                label="6-digit code"
-                value={code}
-                onChangeText={setCode}
-                placeholder="123456"
-                keyboardType="number-pad"
-                // Lets iOS and Android offer the code straight from the SMS.
-                textContentType="oneTimeCode"
-                autoComplete="sms-otp"
-                maxLength={6}
-                returnKeyType="done"
-                onSubmitEditing={() => void submitCode()}
-              />
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.ca"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordInput.current?.focus()}
+          />
 
-              <Field
-                label="Your name"
-                hint="Only used if this number is new here."
-                value={name}
-                onChangeText={setName}
-                placeholder="Optional"
-                autoComplete="name"
-              />
+          <Field
+            ref={passwordInput}
+            label="Password"
+            hint={isSignup ? "At least 8 characters." : undefined}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete={isSignup ? "new-password" : "current-password"}
+            textContentType={isSignup ? "newPassword" : "password"}
+            returnKeyType={isSignup ? "next" : "go"}
+            onSubmitEditing={isSignup ? undefined : () => void submit()}
+          />
 
-              {notice !== null && error === null ? (
-                <Alert tone="info">{notice}</Alert>
-              ) : null}
-              {error !== null ? <Alert tone="error">{error}</Alert> : null}
+          {isSignup ? (
+            <Field
+              label="Mobile number"
+              // Said plainly: a required number on a sign-up form reads as
+              // "we will text you a code", and that is what it is not.
+              hint="For businesses to reach you. You sign in with your email and password, never a code sent here."
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="604 555 0142"
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              returnKeyType="go"
+              onSubmitEditing={() => void submit()}
+            />
+          ) : null}
 
-              <Button block busy={busy} onPress={() => void submitCode()}>
-                Verify and sign in
-              </Button>
-              <Button
-                variant="ghost"
-                block
-                disabled={busy || cooldown > 0}
-                onPress={() => void sendCode(true)}
-              >
-                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
-              </Button>
-            </>
-          )}
+          {error !== null ? <Alert tone="error">{error}</Alert> : null}
+
+          <Button block busy={busy} onPress={() => void submit()}>
+            {isSignup ? "Create account" : "Sign in"}
+          </Button>
         </Card>
 
         <Text style={styles.footnote}>
-          Owner and admin accounts still sign in with an email and password on
+          Owner and admin accounts use the same email and password here as on
           the web.
         </Text>
       </ScrollView>
@@ -264,20 +244,16 @@ const styles = StyleSheet.create({
     color: color.muted,
   },
   card: { gap: space.md },
-  steps: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  step: {
-    fontSize: type.small.fontSize,
-    fontWeight: "600",
-    color: color.subtle,
-    backgroundColor: color.wash,
-    paddingHorizontal: space.sm,
-    paddingVertical: 4,
-    borderRadius: 999,
-    overflow: "hidden",
+  tabs: { flexDirection: "row", gap: space.sm },
+  tab: {
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: color.line,
   },
-  stepOn: { color: color.onInk, backgroundColor: color.ink },
-  stepDash: { color: color.line },
-  sentTo: { fontSize: type.small.fontSize, color: color.muted },
-  link: { color: color.ink, textDecorationLine: "underline" },
+  tabOn: { backgroundColor: color.ink, borderColor: color.ink },
+  tabText: { fontSize: type.small.fontSize, fontWeight: "600", color: color.muted },
+  tabTextOn: { color: color.onInk },
   footnote: { fontSize: type.small.fontSize, color: color.subtle },
 });

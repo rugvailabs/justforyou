@@ -10,8 +10,11 @@
  *
  * POST accepts three shapes:
  *   { mode: "login",  email, password }
- *   { mode: "signup", name, email, password, phone?, preferred_contact_method? }
+ *   { mode: "signup", name, email, password, phone, preferred_contact_method? }
  *   { mode: "token",  access_token }   - for a token obtained elsewhere
+ *
+ * There is no phone sign-in. `phone` is a contact detail collected at signup,
+ * never a credential: an account is created and entered with email + password.
  *
  * The brief asked this route to take "access/refresh tokens". The backend
  * issues a single access token and no refresh token (TokenResponse in
@@ -23,7 +26,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { ApiError, getMe, login, signup, verifyOtp } from "@/lib/api";
+import { ApiError, getMe, login, signup } from "@/lib/api";
 import {
   ACCESS_TOKEN_COOKIE,
   ACCESS_TOKEN_MAX_AGE,
@@ -36,7 +39,7 @@ import type { PreferredContactMethod, TokenResponse, UserResponse } from "@/lib/
 export const dynamic = "force-dynamic";
 
 interface SessionRequestBody {
-  mode?: "login" | "signup" | "token" | "otp";
+  mode?: "login" | "signup" | "token";
   email?: unknown;
   password?: unknown;
   name?: unknown;
@@ -44,8 +47,6 @@ interface SessionRequestBody {
   preferred_contact_method?: unknown;
   access_token?: unknown;
   role?: unknown;
-  // Shared with signup above; OTP verification reuses `phone`.
-  code?: unknown;
 }
 
 function bad(detail: string, status = 400): NextResponse {
@@ -101,23 +102,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       token = body.access_token;
       if (isTokenExpired(token)) return bad("That token is malformed or expired.", 401);
-    } else if (mode === "otp") {
-      // Phone code sign-in. The backend distinguishes its failure modes by
-      // status (404 none / 410 expired / 400 wrong / 429 throttled), and
-      // those statuses are forwarded untouched so the form can say which.
-      if (!isNonEmptyString(body.phone)) return bad("`phone` is required.");
-      if (!isNonEmptyString(body.code)) return bad("`code` is required.");
-
-      const issued: TokenResponse = await verifyOtp(
-        body.phone,
-        body.code,
-        isNonEmptyString(body.name) ? body.name : undefined,
-      );
-      token = issued.access_token;
     } else if (mode === "signup") {
       if (!isNonEmptyString(body.name)) return bad("`name` is required.");
       if (!isNonEmptyString(body.email)) return bad("`email` is required.");
       if (!isNonEmptyString(body.password)) return bad("`password` is required.");
+      // Required at signup: the form asks for it, and a form is not a
+      // constraint - anything can POST here.
+      if (!isNonEmptyString(body.phone)) return bad("`phone` is required.");
 
       // Only these two are forwarded. Passing the role straight through would
       // let anyone mint an admin by POSTing {"role":"admin"} here; the backend
@@ -130,7 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         email: body.email,
         password: body.password,
         role: requestedRole,
-        phone: isNonEmptyString(body.phone) ? body.phone : null,
+        phone: body.phone,
         ...(isNonEmptyString(body.preferred_contact_method)
           ? {
               preferred_contact_method:

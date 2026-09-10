@@ -46,11 +46,16 @@ class User(Base):
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    # Digits-only form of `phone`, used to resolve an OTP sign-in. Stored
-    # separately because `phone` is the display value and arrives in mixed
-    # formats ("+1-604-555-0101", "6045550101"); comparing those directly
-    # would let one person hold two accounts on one number. UNIQUE, but
-    # nullable - most accounts have no phone at all.
+    # Digits-only form of `phone`. Added for phone one-time-code sign-in,
+    # which has since been removed, so nothing writes it today and every row
+    # is NULL for accounts created since.
+    #
+    # Kept rather than dropped because the reason it exists still holds:
+    # `phone` is a display value arriving in mixed formats
+    # ("+1-604-555-0101", "6045550101"), and the UNIQUE constraint here is
+    # what would stop one person holding two accounts on one number. Signup
+    # would have to populate it - and decide what happens on a collision -
+    # before that means anything.
     phone_normalized: Mapped[str | None] = mapped_column(
         String(32), nullable=True, unique=True, index=True
     )

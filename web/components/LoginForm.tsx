@@ -1,23 +1,30 @@
 "use client";
 
 /**
- * Email + password sign-in / sign-up.
+ * Email + password sign-in and sign-up. The only way into the app.
  *
- * The brief specified a phone -> OTP flow, but the backend has no OTP
- * endpoints (no /auth/otp/request, no /auth/otp/verify, and no "otp" anywhere
- * in the source). Auth is email + a bcrypt password via /login and /signup,
- * so that is what this drives.
+ * Phone one-time-code sign-in used to sit above this form and has been
+ * removed: a mobile number is now a contact detail collected at sign-up, never
+ * a credential. That distinction is the point of this file - the number is
+ * required, and it still cannot sign anybody in.
  *
  * Credentials are posted to our own /api/auth/session route, which performs
  * the FastAPI exchange server-side and sets the httpOnly cookies. The browser
  * never sees the JWT.
+ *
+ * The `required` attributes below are a courtesy that catches a typo before a
+ * round trip; the session route enforces the same rules, because a form is not
+ * a constraint and anything can POST there.
  */
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Alert } from "@/components/ds/feedback";
+import { Button, Input, Label } from "@/components/ds/primitives";
+import { HINT } from "@/components/ds/form";
+import { cn } from "@/lib/cn";
 import type { UserResponse } from "@/lib/types";
-import Alert from "@/components/ui/Alert";
 
 type Mode = "login" | "signup";
 
@@ -37,6 +44,8 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const signup = mode === "signup";
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError(null);
@@ -47,13 +56,13 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          mode === "signup"
+          signup
             ? {
                 mode,
                 name,
                 email,
                 password,
-                phone: phone || null,
+                phone,
                 role: isOwner ? "business_owner" : "customer",
               }
             : { mode, email, password },
@@ -87,122 +96,129 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="flex gap-2 text-sm">
-        <button
-          type="button"
-          onClick={() => {
-            setMode("login");
-            setError(null);
-          }}
-          className={`rounded px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-            mode === "login" ? "bg-slate-900 text-white" : "border border-slate-300"
-          }`}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMode("signup");
-            setError(null);
-          }}
-          className={`rounded px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-            mode === "signup" ? "bg-slate-900 text-white" : "border border-slate-300"
-          }`}
-        >
-          Create account
-        </button>
+      {/* Two modes of one form, not two forms: the fields they share keep
+          whatever was typed when you switch. */}
+      <div
+        className="flex gap-2"
+        role="group"
+        aria-label="Sign in or create an account"
+      >
+        {(
+          [
+            ["login", "Sign in"],
+            ["signup", "Create account"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            onClick={() => {
+              setMode(value);
+              setError(null);
+            }}
+            className={cn(
+              "rounded-input px-3 py-1.5 text-body font-medium transition-colors",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-ring",
+              mode === value
+                ? "bg-brand-700 text-ink-inverse"
+                : "border border-line-strong bg-surface text-ink hover:bg-surface-muted",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {mode === "signup" ? (
-        <label className="block">
-          <span className="text-sm font-medium">Name</span>
-          <input
+      {signup ? (
+        <div>
+          <Label htmlFor="auth-name">Name</Label>
+          <Input
+            id="auth-name"
             type="text"
             required
+            maxLength={255}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(event) => setName(event.target.value)}
             autoComplete="name"
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
           />
-        </label>
+        </div>
       ) : null}
 
-      <label className="block">
-        <span className="text-sm font-medium">Email</span>
-        <input
+      <div>
+        <Label htmlFor="auth-email">Email</Label>
+        <Input
+          id="auth-email"
           type="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
         />
-      </label>
+      </div>
 
-      <label className="block">
-        <span className="text-sm font-medium">Password</span>
-        <input
+      <div>
+        <Label htmlFor="auth-password">Password</Label>
+        <Input
+          id="auth-password"
           type="password"
           required
           // The backend enforces 8-72 characters on signup.
-          minLength={mode === "signup" ? 8 : undefined}
+          minLength={signup ? 8 : undefined}
           maxLength={72}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete={mode === "signup" ? "new-password" : "current-password"}
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete={signup ? "new-password" : "current-password"}
         />
-      </label>
+        {signup ? <p className={HINT}>At least 8 characters.</p> : null}
+      </div>
 
-      {mode === "signup" ? (
-        <label className="block">
-          <span className="text-sm font-medium">
-            Phone <span className="font-normal text-slate-500">(optional)</span>
-          </span>
-          <input
+      {signup ? (
+        <div>
+          <Label htmlFor="auth-phone">Mobile number</Label>
+          <Input
+            id="auth-phone"
             type="tel"
-            value={phone}
+            required
             maxLength={32}
-            onChange={(e) => setPhone(e.target.value)}
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
             autoComplete="tel"
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+            placeholder="(604) 555-0142"
           />
-        </label>
+          {/* Said plainly, because a required phone number on a sign-up form
+              reads as "we will text you a code" - and that is exactly what it
+              is not. */}
+          <p className={HINT}>
+            How a business reaches you about an enquiry. You sign in with your
+            email and password, never a code sent to this number.
+          </p>
+        </div>
       ) : null}
 
-      {mode === "signup" ? (
+      {signup ? (
         <label className="flex items-start gap-2">
           <input
             type="checkbox"
             checked={isOwner}
-            onChange={(e) => setIsOwner(e.target.checked)}
-            className="mt-1"
+            onChange={(event) => setIsOwner(event.target.checked)}
+            className="mt-1 accent-brand-700"
           />
-          <span className="text-sm text-slate-700">
+          <span className="text-body text-ink-muted">
             I want to list a business
-            <span className="block text-xs text-slate-500">
+            <span className="block text-meta text-ink-subtle">
               Gives you access to the owner dashboard.
             </span>
           </span>
         </label>
       ) : null}
 
-      {error !== null ? (
-        <Alert tone="error">{error}</Alert>
-      ) : null}
+      {error !== null ? <Alert tone="error">{error}</Alert> : null}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
-      >
-        {submitting
-          ? "Working..."
-          : mode === "signup"
-            ? "Create account"
-            : "Sign in"}
-      </button>
+      <Button type="submit" disabled={submitting} className="w-full">
+        {submitting ? "Working…" : signup ? "Create account" : "Sign in"}
+      </Button>
     </form>
   );
 }

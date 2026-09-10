@@ -394,7 +394,8 @@ SEED_OWNER = {
     "role": UserRole.business_owner,
     # The mobile app signs in with a code sent to a phone number, so an owner
     # without one cannot reach their own dashboard there. phone_normalized is
-    # what /auth/otp/verify matches on; the formatted phone is only for display.
+    # the normalised form kept for de-duplicating numbers; the formatted phone
+    # is only for display.
     "phone": "+1-604-555-0166",
     "phone_normalized": "16045550166",
 }
