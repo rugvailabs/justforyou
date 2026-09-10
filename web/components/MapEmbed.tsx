@@ -13,7 +13,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
   ssr: false,
   loading: () => (
     <div
-      className="flex h-64 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-sm text-slate-500"
+      className="flex h-64 w-full items-center justify-center rounded-card border border-line bg-surface-muted text-meta text-ink-muted"
       role="status"
     >
       Loading map…

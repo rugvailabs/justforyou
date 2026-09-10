@@ -42,6 +42,77 @@ CATEGORIES: List[Tuple[str, str, str, int, str]] = [
     ("legal", "Legal Services", "⚖️", 100, "Family, immigration, real estate and small-claims law."),
 ]
 
+# Opening hours, by category.
+#
+# Stored the way app/models/business.py holds them - {"mon": [["09:00","17:00"]]}
+# - with an absent or empty day meaning closed. Assigned per category rather
+# than per listing because the trade is what actually determines them: a
+# plumber opens before an office does, and a salon is shut on Monday.
+#
+# Two shapes here exist to exercise the reader rather than to decorate the
+# seed. Restaurants carry a split service - lunch, a gap, then dinner - which a
+# renderer that flattens ranges would wrongly show as open all afternoon. Their
+# Friday and Saturday close at 00:30, which is before the open time and so
+# crosses midnight; getOpenState() handles that, and nothing else in the seed
+# would prove it.
+HOURS_BY_CATEGORY: dict[str, dict[str, list[list[str]]]] = {
+    "plumbers": {
+        "mon": [["07:00", "18:00"]], "tue": [["07:00", "18:00"]],
+        "wed": [["07:00", "18:00"]], "thu": [["07:00", "18:00"]],
+        "fri": [["07:00", "18:00"]], "sat": [["08:00", "16:00"]], "sun": [],
+    },
+    "electricians": {
+        "mon": [["08:00", "17:00"]], "tue": [["08:00", "17:00"]],
+        "wed": [["08:00", "17:00"]], "thu": [["08:00", "17:00"]],
+        "fri": [["08:00", "17:00"]], "sat": [["09:00", "14:00"]], "sun": [],
+    },
+    "restaurants": {
+        "mon": [["11:30", "14:30"], ["17:00", "22:00"]],
+        "tue": [["11:30", "14:30"], ["17:00", "22:00"]],
+        "wed": [["11:30", "14:30"], ["17:00", "22:00"]],
+        "thu": [["11:30", "14:30"], ["17:00", "22:00"]],
+        "fri": [["11:30", "14:30"], ["17:00", "00:30"]],
+        "sat": [["11:30", "15:00"], ["17:00", "00:30"]],
+        "sun": [["17:00", "21:00"]],
+    },
+    "dentists": {
+        "mon": [["08:00", "18:00"]], "tue": [["08:00", "18:00"]],
+        "wed": [["08:00", "18:00"]], "thu": [["08:00", "18:00"]],
+        "fri": [["08:00", "15:00"]], "sat": [], "sun": [],
+    },
+    "auto-repair": {
+        "mon": [["07:30", "17:30"]], "tue": [["07:30", "17:30"]],
+        "wed": [["07:30", "17:30"]], "thu": [["07:30", "17:30"]],
+        "fri": [["07:30", "17:30"]], "sat": [["08:00", "13:00"]], "sun": [],
+    },
+    "gyms": {
+        "mon": [["05:00", "23:00"]], "tue": [["05:00", "23:00"]],
+        "wed": [["05:00", "23:00"]], "thu": [["05:00", "23:00"]],
+        "fri": [["05:00", "22:00"]], "sat": [["07:00", "21:00"]],
+        "sun": [["07:00", "21:00"]],
+    },
+    "salons": {
+        "mon": [], "tue": [["10:00", "19:00"]], "wed": [["10:00", "19:00"]],
+        "thu": [["10:00", "20:00"]], "fri": [["10:00", "20:00"]],
+        "sat": [["09:00", "18:00"]], "sun": [],
+    },
+    "movers": {
+        "mon": [["08:00", "18:00"]], "tue": [["08:00", "18:00"]],
+        "wed": [["08:00", "18:00"]], "thu": [["08:00", "18:00"]],
+        "fri": [["08:00", "18:00"]], "sat": [["08:00", "17:00"]], "sun": [],
+    },
+    "it-support": {
+        "mon": [["09:00", "17:00"]], "tue": [["09:00", "17:00"]],
+        "wed": [["09:00", "17:00"]], "thu": [["09:00", "17:00"]],
+        "fri": [["09:00", "17:00"]], "sat": [], "sun": [],
+    },
+    "legal": {
+        "mon": [["09:00", "17:00"]], "tue": [["09:00", "17:00"]],
+        "wed": [["09:00", "17:00"]], "thu": [["09:00", "17:00"]],
+        "fri": [["09:00", "16:00"]], "sat": [], "sun": [],
+    },
+}
+
 # (slug, name, category_slug, city, address, postal, lat, lng, phone, website,
 #  rating, review_count, verified, description)
 # rating None models a listing with no reviews yet - deliberately included so
@@ -163,11 +234,36 @@ def seed_businesses(db: Session) -> Tuple[int, int]:
                 verified=verified,
                 is_active=True,
                 description=description,
+                opening_hours=HOURS_BY_CATEGORY.get(category_slug),
             )
         )
         created += 1
+
     db.flush()
+    backfill_hours(db, by_slug)
     return created, len(BUSINESSES)
+
+
+def backfill_hours(db: Session, by_slug: dict) -> int:
+    """Give listings seeded before hours existed the same per-category pattern.
+
+    seed_businesses() skips any slug already present, so adding opening_hours
+    to the fixture alone would leave every existing row null - which is exactly
+    the state that made the profile page's hours panel unreachable. Only rows
+    that have none are touched, so an owner who set their own keeps them.
+    """
+    by_id = {category.id: slug for slug, category in by_slug.items()}
+    filled = 0
+    for business in db.scalars(
+        select(Business).where(Business.opening_hours.is_(None))
+    ).all():
+        hours = HOURS_BY_CATEGORY.get(by_id.get(business.category_id, ""))
+        if hours is None:
+            continue
+        business.opening_hours = hours
+        filled += 1
+    db.flush()
+    return filled
 
 
 # (business slug, reviewer name, reviewer email, rating, title, body, owner_reply)

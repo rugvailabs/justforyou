@@ -1,29 +1,83 @@
-import { Skeleton, SkeletonRegion } from "@/components/ui/Skeleton";
+/**
+ * Profile skeleton.
+ *
+ * Matches the real page's geometry - breadcrumb, title block, action strip,
+ * then the two-column split - so the swap when data lands does not jump. The
+ * header is the real one: it does not depend on the listing, so rendering a
+ * grey bar in its place would be a downgrade.
+ */
 
-export default function BusinessLoading(): JSX.Element {
+import SiteHeader from "@/components/ds/SiteHeader";
+import { Card } from "@/components/ds/primitives";
+import { cn } from "@/lib/cn";
+
+function Bar({ className }: { className?: string }): JSX.Element {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <SkeletonRegion label="Loading this listing">
-        <Skeleton className="h-8 w-2/3 max-w-sm" />
-        <Skeleton className="mt-2 h-4 w-1/2 max-w-xs" />
-        <Skeleton className="mt-3 h-4 w-40" />
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Skeleton className="h-9 w-36" />
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="h-9 w-28" />
+    <span
+      className={cn(
+        "relative block overflow-hidden rounded-sm bg-surface-muted",
+        "after:absolute after:inset-0 after:-translate-x-full after:animate-shimmer",
+        "after:bg-gradient-to-r after:from-transparent after:via-line/60 after:to-transparent",
+        "motion-reduce:after:hidden",
+        className,
+      )}
+    />
+  );
+}
+
+export default function Loading(): JSX.Element {
+  return (
+    <>
+      {/* @ts-expect-error Async Server Component in a sync parent - allowed in
+          the App Router, not yet expressible in the type system. */}
+      <SiteHeader locale="en" />
+
+      <main
+        className="mx-auto max-w-6xl px-4 py-6 sm:px-6"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span className="sr-only">Loading listing</span>
+
+        <Bar className="h-3 w-56" />
+        <Bar className="mt-4 h-8 w-2/5" />
+        <Bar className="mt-2 h-3 w-1/3" />
+        <Bar className="mt-3 h-4 w-40" />
+
+        <div className="mt-4 flex gap-2 border-y border-line py-3">
+          <Bar className="h-10 w-36 rounded-input" />
+          <Bar className="h-10 w-28 rounded-input" />
+          <Bar className="h-10 w-28 rounded-input" />
         </div>
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          <div className="md:col-span-2">
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="mt-2 h-4 w-full" />
-            <Skeleton className="mt-1.5 h-4 w-4/5" />
-            {/* The map is a fixed 16rem block; reserve it so the page does
-                not lurch when Leaflet mounts. */}
-            <Skeleton className="mt-6 h-64 w-full rounded-lg" />
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <Bar className="h-10 w-64 rounded-input" />
+            <div>
+              <Bar className="h-5 w-24" />
+              <Bar className="mt-2 h-3 w-full" />
+              <Bar className="mt-1.5 h-3 w-4/5" />
+            </div>
+            <div>
+              <Bar className="h-5 w-28" />
+              <Card className="mt-2 p-4">
+                <Bar className="h-3 w-2/5" />
+                <Bar className="mt-2 h-3 w-1/3" />
+                <Bar className="mt-3 h-64 w-full rounded-card" />
+              </Card>
+            </div>
           </div>
-          <Skeleton className="h-48 rounded-lg" />
+
+          <Card className="h-64 p-4 lg:col-span-1">
+            <Bar className="h-3 w-20" />
+            <Bar className="mt-4 h-3 w-24" />
+            <Bar className="mt-1.5 h-3 w-32" />
+            <Bar className="mt-4 h-3 w-24" />
+            <Bar className="mt-1.5 h-3 w-40" />
+          </Card>
         </div>
-      </SkeletonRegion>
-    </div>
+      </main>
+    </>
   );
 }

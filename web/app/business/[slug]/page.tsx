@@ -1,33 +1,65 @@
 /**
- * Business detail page.
+ * /business/[slug] - one listing's public profile.
  *
- * A Server Component: the listing is fetched during render, so the initial
- * paint needs no spinner and the markup is crawlable - which is the whole
- * point of per-business pages on a directory site. generateMetadata gives each
- * one a real title/description for the same reason.
+ * Prompt 3 of the restyle applied to the real page. A Server Component, as
+ * before: the listing is fetched during render, so the first paint needs no
+ * spinner and the markup is crawlable, which is the whole point of having a
+ * page per business. generateMetadata gives each one a real title and
+ * description for the same reason.
  *
- * SCOPE. Several sections the spec calls for have no backend behind them and
- * are therefore absent rather than faked - see the "Not yet available" note
- * rendered at the foot of the page:
- *   - photo gallery      (no business_photos table)
- *   - opening hours/tags (not yet surfaced here)
- * Inventing placeholder content for them would misrepresent the data.
+ * The composition is what changed. Identity, the action bar and the enquiry
+ * panel are the conversion path and now sit above the fold together; the
+ * supporting detail - about, hours, location, reviews - runs down the main
+ * column with a sticky contact card beside it.
+ *
+ * Three calls, each settled independently, so a slow or failing one costs its
+ * own section rather than the page: the listing itself (fatal - without it
+ * there is no page), the reviews list, and the rating summary.
+ *
+ * WHAT IS ABSENT, AND WHY. The design asks for more than the backend holds,
+ * and each gap is left visible rather than filled with something invented:
+ *
+ *   - No photo gallery. There is no business_photos table, so the page says
+ *     so once, at the foot, instead of showing a stock storefront.
+ *   - No hours table unless the listing has hours. The schema, the owner form
+ *     and getOpenState() are all real and wired; the seed simply carries none,
+ *     so today every listing falls through to "Hours not listed".
+ *   - No rating histogram unless the summary endpoint returns real reviews.
+ *     See the note above the reviews section: the rating on the business row
+ *     and the reviews in the table disagree on seeded data, and an all-zero
+ *     histogram under a 4.9 headline would read as "everyone rated this zero".
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Globe, MapPin, MessageSquare } from "lucide-react";
 
-import ClickToCall from "@/components/ClickToCall";
-import EnquiryForm from "@/components/EnquiryForm";
+import BusinessHours from "@/components/ds/BusinessHours";
+import EnquiryPanel from "@/components/ds/EnquiryPanel";
+import RatingBreakdown from "@/components/ds/RatingBreakdown";
+import ShowNumber from "@/components/ds/ShowNumber";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
+import { Breadcrumbs, EmptyState } from "@/components/ds/feedback";
+import { OpenStatus, RatingPill, VerifiedBadge } from "@/components/ds/indicators";
+import { Badge, Button, Card } from "@/components/ds/primitives";
 import MapEmbed from "@/components/MapEmbed";
-import Badge from "@/components/ui/Badge";
-import Card from "@/components/ui/Card";
-import RatingStars from "@/components/ui/RatingStars";
-import { ButtonLink } from "@/components/ui/Button";
-import { getBusinessBySlug, getReviews } from "@/lib/api";
+import { getBusinessBySlug, getReviewSummary, getReviews } from "@/lib/api";
+import {
+  formatDate,
+  formatLocality,
+  formatPhone,
+  formatPostalCode,
+} from "@/lib/format";
+import { DEFAULT_LOCALE, INTL_LOCALE, tFor } from "@/lib/i18n";
+import type { BusinessReview, BusinessReviewSummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const locale = DEFAULT_LOCALE;
+const intl = INTL_LOCALE[locale];
+const t = tFor(locale);
 
 export async function generateMetadata({
   params,
@@ -37,11 +69,13 @@ export async function generateMetadata({
   const business = await getBusinessBySlug(params.slug);
   if (business === null) return { title: "Listing not found" };
 
+  const where = formatLocality(business.city, business.province);
+
   return {
-    title: `${business.name} - ${business.city}, ${business.province}`,
+    title: `${business.name} - ${where}`,
     description:
       business.description ??
-      `${business.name}, ${business.category_name} in ${business.city}.`,
+      `${business.name}, ${business.category_name ?? "local business"} in ${business.city}.`,
   };
 }
 
@@ -53,250 +87,366 @@ export default async function BusinessPage({
   const business = await getBusinessBySlug(params.slug);
   if (business === null) notFound();
 
-  // Reviews are a separate call so a review-service hiccup cannot take the
-  // whole listing page down with it.
-  let reviews: Awaited<ReturnType<typeof getReviews>> = [];
-  try {
-    reviews = await getReviews(business.id, { limit: 20 });
-  } catch {
-    reviews = [];
-  }
+  // Settled together but independently: neither the list nor the summary is
+  // load-bearing for the page, so each failure degrades to its own empty.
+  const [reviews, summary] = await Promise.all([
+    getReviews(business.id, { limit: 20 }).catch((): BusinessReview[] => []),
+    getReviewSummary(business.id).catch((): BusinessReviewSummary | null => null),
+  ]);
 
   const hasPoint = business.latitude !== null && business.longitude !== null;
-  const address = [business.address, business.city, business.province]
-    .filter(Boolean)
-    .join(", ");
+  const hours =
+    business.opening_hours !== null && Object.keys(business.opening_hours).length > 0
+      ? business.opening_hours
+      : null;
+  const where = formatLocality(business.city, business.province);
+  const postal = formatPostalCode(business.postal_code);
+  const categoryHref =
+    business.category_slug !== null
+      ? `/search?category=${encodeURIComponent(business.category_slug)}`
+      : null;
+
+  // The histogram is only honest when it has something in it.
+  const showBreakdown = summary !== null && summary.review_count > 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <header className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-        {business.category_slug !== null ? (
-          <Link
-            href={`/search?category=${encodeURIComponent(business.category_slug)}`}
-            className="text-sm underline"
-          >
-            More in {business.category_name}
-          </Link>
-        ) : null}
-      </header>
+    <>
+      <SiteHeader locale={locale} />
 
-      {/* --- identity ---------------------------------------------------- */}
-      <div className="mb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            {business.name}
-          </h1>
-          {business.verified ? <Badge tone="success">✓ Verified</Badge> : null}
-        </div>
-        <p className="mt-1 text-slate-600">
-          {business.category_slug !== null ? (
-            <Link
-              href={`/search?category=${encodeURIComponent(business.category_slug)}`}
-              className="underline"
-            >
-              {business.category_name}
-            </Link>
-          ) : (
-            business.category_name
-          )}
-          {address ? ` · ${business.city}, ${business.province}` : ""}
-        </p>
-        <div className="mt-2">
-          <RatingStars
-            rating={business.rating}
-            reviewCount={business.review_count}
-          />
-        </div>
-      </div>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <Breadcrumbs
+          className="mb-4"
+          items={[
+            { label: t("business.home"), href: "/" },
+            ...(business.category_name !== null && categoryHref !== null
+              ? [{ label: business.category_name, href: categoryHref }]
+              : []),
+            { label: business.name },
+          ]}
+        />
 
-      {/* --- action bar --------------------------------------------------- */}
-      {/* Sticky: this is the page's conversion point, so it must stay reachable
-          without scrolling back up. */}
-      <div className="sticky top-0 z-10 -mx-6 mb-6 border-y border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
+        {/* --- identity ------------------------------------------------- */}
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-page-title text-ink">{business.name}</h1>
+              {/* The real stored decision, not search's implied gate: this
+                  page is reachable for listings the gate would exclude. */}
+              <VerifiedBadge
+                status={business.verified ? "verified" : null}
+                locale={locale}
+              />
+            </div>
+
+            <p className="mt-1 text-body text-ink-muted">
+              {categoryHref !== null ? (
+                <Link
+                  href={categoryHref}
+                  className="rounded-sm hover:text-brand-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {business.category_name}
+                </Link>
+              ) : (
+                business.category_name
+              )}
+              {where ? <> &middot; {where}</> : null}
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <RatingPill
+                rating={business.rating}
+                reviewCount={business.review_count}
+                locale={locale}
+              />
+              {/* showUnknown: on this page the absence of hours is itself
+                  worth stating - the visitor came here to find out. */}
+              <OpenStatus hours={hours} locale={locale} showUnknown />
+              {business.price_range !== null ? (
+                <span className="text-meta text-ink-subtle tabular">
+                  {business.price_range}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {/* --- action bar ----------------------------------------------- */}
+        {/* The page's conversion point. Not sticky: the header above it
+            already is, and two stacked sticky bars eat a phone's viewport. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-y border-line py-3">
           {business.phone !== null ? (
-            <ClickToCall businessId={business.id} phone={business.phone} />
+            <ShowNumber
+              businessId={business.id}
+              phone={business.phone}
+              locale={locale}
+              size="md"
+              variant="primary"
+            />
           ) : (
-            <span className="text-sm text-slate-500">No phone number listed</span>
+            <span className="text-meta text-ink-subtle">{t("business.noPhone")}</span>
           )}
 
-          {/* Plain link by design - chat is wired up in a later step. */}
-          <ButtonLink
-            href={`/chat/new?business=${business.id}`}
-            variant="secondary"
-          >
-            💬 Start chat
-          </ButtonLink>
+          <Button asChild variant="secondary">
+            <Link href={`/chat/new?business=${business.id}`}>
+              <MessageSquare aria-hidden="true" />
+              {t("business.startChat")}
+            </Link>
+          </Button>
 
           {business.website !== null ? (
-            <a
-              href={business.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
-            >
-              🌐 Website
-            </a>
+            <Button asChild variant="secondary">
+              <a href={business.website} target="_blank" rel="noopener noreferrer">
+                <Globe aria-hidden="true" />
+                {t("business.website")}
+              </a>
+            </Button>
+          ) : null}
+
+          {hasPoint ? (
+            <Button asChild variant="ghost">
+              <a
+                href={`https://www.openstreetmap.org/directions?to=${business.latitude}%2C${business.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MapPin aria-hidden="true" />
+                {t("listing.directions")}
+              </a>
+            </Button>
           ) : null}
         </div>
-      </div>
 
-      <div className="mb-6">
-        <EnquiryForm businessId={business.id} businessName={business.name} />
-      </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* --- main column -------------------------------------------- */}
+          <div className="space-y-8 lg:col-span-2">
+            <EnquiryPanel
+              businessId={business.id}
+              businessName={business.name}
+              locale={locale}
+            />
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2">
-          {business.description !== null ? (
-            <section className="mb-6">
-              <h2 className="mb-2 text-lg font-semibold text-slate-900">About</h2>
-              <p className="text-slate-700">{business.description}</p>
-            </section>
-          ) : null}
-
-          <section>
-            <h2 className="mb-2 text-lg font-semibold text-slate-900">Location</h2>
-            <Card>
-              <address className="not-italic text-slate-700">
-                {business.address !== null ? <div>{business.address}</div> : null}
-                <div>
-                  {business.city}, {business.province}
-                  {business.postal_code !== null ? ` ${business.postal_code}` : ""}
-                </div>
-              </address>
-
-              {hasPoint ? (
-                <div className="mt-3">
-                  <MapEmbed
-                    latitude={business.latitude as number}
-                    longitude={business.longitude as number}
-                    name={business.name}
-                  />
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${business.latitude}&mlon=${business.longitude}#map=17/${business.latitude}/${business.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-block text-sm underline"
-                  >
-                    Open in OpenStreetMap
-                  </a>
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-slate-500">
-                  This listing has no coordinates, so it cannot be mapped.
+            {business.description !== null ? (
+              <section>
+                <h2 className="text-section-heading text-ink">
+                  {t("business.about")}
+                </h2>
+                <p className="mt-2 max-w-prose text-body text-ink-muted">
+                  {business.description}
                 </p>
+
+                {business.tags !== null && business.tags.length > 0 ? (
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {business.tags.map((tag) => (
+                      <li key={tag}>
+                        <Badge tone="neutral">{tag}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </section>
+            ) : null}
+
+            {hours !== null ? (
+              <section>
+                <h2 className="text-section-heading text-ink">
+                  {t("business.hours")}
+                </h2>
+                <BusinessHours hours={hours} locale={locale} className="mt-2" />
+              </section>
+            ) : null}
+
+            <section>
+              <h2 className="text-section-heading text-ink">
+                {t("business.location")}
+              </h2>
+              <Card className="mt-2 p-4">
+                <address className="not-italic text-body text-ink-muted">
+                  {business.address !== null ? <div>{business.address}</div> : null}
+                  <div>
+                    {where}
+                    {postal !== null ? ` ${postal}` : ""}
+                  </div>
+                </address>
+
+                {hasPoint ? (
+                  <div className="mt-3">
+                    <MapEmbed
+                      latitude={business.latitude as number}
+                      longitude={business.longitude as number}
+                      name={business.name}
+                    />
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${business.latitude}&mlon=${business.longitude}#map=17/${business.latitude}/${business.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block rounded-sm text-meta text-brand-700 underline underline-offset-4 hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                      {t("business.openInMaps")}
+                    </a>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-meta text-ink-subtle">
+                    {t("business.notMapped")}
+                  </p>
+                )}
+              </Card>
+            </section>
+
+            {/* --- reviews ---------------------------------------------- */}
+            <section>
+              <h2 className="text-section-heading text-ink">
+                {t("business.reviewsHeading")}
+                {reviews.length > 0 ? ` (${reviews.length})` : ""}
+              </h2>
+
+              {showBreakdown ? (
+                <Card className="mt-2 p-4">
+                  <h3 className="sr-only">{t("business.ratingBreakdown")}</h3>
+                  <RatingBreakdown summary={summary} locale={locale} />
+                </Card>
+              ) : null}
+
+              {reviews.length === 0 ? (
+                <EmptyState
+                  className="mt-2"
+                  title={t("business.noReviewsTitle")}
+                  body={t("business.noReviewsBody", { name: business.name })}
+                />
+              ) : (
+                <ul className="mt-2 space-y-3">
+                  {reviews.map((review) => (
+                    <li key={review.id}>
+                      <Card className="p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <RatingPill rating={review.rating} size="sm" locale={locale} />
+                          <div className="text-right text-meta text-ink-subtle">
+                            <div>{review.author_name}</div>
+                            <div>{formatDate(review.created_at, intl)}</div>
+                          </div>
+                        </div>
+
+                        {review.title !== null ? (
+                          <h3 className="mt-2 text-card-title text-ink">
+                            {review.title}
+                          </h3>
+                        ) : null}
+
+                        {review.body !== null ? (
+                          <p className="mt-1 text-body text-ink-muted">{review.body}</p>
+                        ) : null}
+
+                        {/* The owner's reply, under the review it answers -
+                            the same owner_reply the dashboard writes. */}
+                        {review.owner_reply !== null ? (
+                          <div className="mt-3 rounded-input border-l-2 border-brand-300 bg-surface-muted px-3 py-2">
+                            <p className="text-micro uppercase text-ink-subtle">
+                              {t("business.ownerReply", { name: business.name })}
+                            </p>
+                            <p className="mt-1 text-body text-ink-muted">
+                              {review.owner_reply}
+                            </p>
+                          </div>
+                        ) : null}
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
               )}
+            </section>
+          </div>
+
+          {/* --- aside --------------------------------------------------- */}
+          <aside className="lg:col-span-1">
+            <Card className="p-4 lg:sticky lg:top-24">
+              <h2 className="text-micro uppercase text-ink-subtle">
+                {t("business.contact")}
+              </h2>
+
+              <dl className="mt-3 space-y-3 text-body">
+                <div>
+                  <dt className="font-medium text-ink">{t("business.phone")}</dt>
+                  <dd className="text-ink-muted tabular">
+                    {business.phone !== null
+                      ? // Formatted but not revealed: the number itself is
+                        // behind Show number, which is what records the lead.
+                        t("business.phoneHidden")
+                      : t("business.notListed")}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="font-medium text-ink">{t("business.website")}</dt>
+                  <dd className="truncate text-ink-muted">
+                    {business.website !== null ? (
+                      <a
+                        href={business.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-sm text-brand-700 underline underline-offset-4 hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        {business.website.replace(/^https?:\/\//, "")}
+                      </a>
+                    ) : (
+                      t("business.notListed")
+                    )}
+                  </dd>
+                </div>
+
+                {business.email !== null ? (
+                  <div>
+                    <dt className="font-medium text-ink">{t("business.email")}</dt>
+                    <dd className="truncate text-ink-muted">{business.email}</dd>
+                  </div>
+                ) : null}
+
+                {business.whatsapp !== null ? (
+                  <div>
+                    <dt className="font-medium text-ink">{t("business.whatsapp")}</dt>
+                    <dd className="text-ink-muted tabular">
+                      {formatPhone(business.whatsapp)}
+                    </dd>
+                  </div>
+                ) : null}
+
+                <div>
+                  <dt className="font-medium text-ink">{t("business.category")}</dt>
+                  <dd className="text-ink-muted">
+                    {categoryHref !== null ? (
+                      <Link
+                        href={categoryHref}
+                        className="rounded-sm text-brand-700 underline underline-offset-4 hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        {business.category_name}
+                      </Link>
+                    ) : (
+                      t("business.notListed")
+                    )}
+                  </dd>
+                </div>
+              </dl>
+
+              {/* Stated where the visitor is deciding whether to trust the
+                  listing, not buried at the foot of the page. */}
+              {business.verified ? (
+                <p className="mt-4 border-t border-line pt-3 text-meta text-ink-subtle">
+                  {t("listing.verifiedHint")}
+                </p>
+              ) : null}
             </Card>
-          </section>
+          </aside>
         </div>
 
-        <aside>
-          <Card>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Contact
-            </h2>
-            <dl className="space-y-2 text-sm">
-              <div>
-                <dt className="font-medium text-slate-700">Phone</dt>
-                <dd className="text-slate-600">
-                  {business.phone !== null
-                    ? "Hidden - use “Show number” above"
-                    : "Not listed"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Website</dt>
-                <dd className="truncate text-slate-600">
-                  {business.website ?? "Not listed"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-700">Category</dt>
-                <dd className="text-slate-600">
-                  {business.category_name ?? "Uncategorised"}
-                </dd>
-              </div>
-            </dl>
-          </Card>
-        </aside>
-      </div>
-
-      {/* --- reviews ------------------------------------------------------ */}
-      <section className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">
-          Reviews{reviews.length > 0 ? ` (${reviews.length})` : ""}
-        </h2>
-
-        {reviews.length === 0 ? (
-          <Card>
-            <p className="text-sm text-slate-600">
-              No reviews yet. Be the first to review {business.name}.
-            </p>
-          </Card>
-        ) : (
-          <ul className="space-y-3">
-            {reviews.map((review) => (
-              <li key={review.id}>
-                <Card>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <RatingStars rating={review.rating} showCount={false} />
-                      {review.title !== null ? (
-                        <h3 className="mt-1 font-semibold text-slate-900">
-                          {review.title}
-                        </h3>
-                      ) : null}
-                    </div>
-                    <div className="text-right text-sm text-slate-500">
-                      <div>{review.author_name}</div>
-                      <div>
-                        {new Date(review.created_at).toLocaleDateString("en-CA", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {review.body !== null ? (
-                    <p className="mt-2 text-sm text-slate-700">{review.body}</p>
-                  ) : null}
-
-                  {/* The owner's reply, rendered inline under the review it
-                      answers - same owner_reply field the dashboard writes. */}
-                  {review.owner_reply !== null ? (
-                    <div className="mt-3 rounded-md border-l-2 border-slate-300 bg-slate-50 px-3 py-2">
-                      <p className="text-xs font-medium text-slate-500">
-                        Response from {business.name}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-700">
-                        {review.owner_reply}
-                      </p>
-                    </div>
-                  ) : null}
-                </Card>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <Card className="border-slate-300 bg-slate-50">
-          <h2 className="text-sm font-semibold text-slate-800">
-            Not yet available
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            A photo gallery needs a backend table that does not exist yet, so it
-            is left out rather than mocked. Nothing on this page is placeholder
-            data.
+        {/* The one gap worth naming on the page: a visitor expects photos and
+            their absence otherwise reads as a broken page. */}
+        <Card className="mt-8 border-dashed bg-surface-muted p-4 shadow-none">
+          <h2 className="text-card-title text-ink">{t("business.photosTitle")}</h2>
+          <p className="mt-1 max-w-prose text-body text-ink-muted">
+            {t("business.photosBody")}
           </p>
         </Card>
-      </section>
-    </div>
+      </main>
+
+      <SiteFooter locale={locale} />
+    </>
   );
 }

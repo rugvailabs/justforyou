@@ -15,7 +15,7 @@ const ResultsMapView = dynamic(() => import("@/components/ds/ResultsMapView"), {
   ssr: false,
   loading: () => (
     <div
-      className="flex h-full w-full items-center justify-center bg-surface-muted text-meta text-ink-subtle"
+      className="flex h-full w-full items-center justify-center bg-surface-muted text-meta text-ink-muted"
       role="status"
     >
       Loading map…

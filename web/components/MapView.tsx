@@ -7,8 +7,9 @@
  * import time, so it can never be server-rendered. Consumers must pull it in
  * with next/dynamic and `ssr: false` (see MapEmbed).
  *
- * Props are deliberately just lat/lng/name so the search results page can
- * reuse this later without knowing anything about a Business.
+ * Props are deliberately just lat/lng/name: this pins exactly one point for
+ * the profile page. The results map is ds/ResultsMapView, which takes a list -
+ * sharing them would mean a props shape that is half-ignored in each case.
  */
 
 import "leaflet/dist/leaflet.css";
@@ -22,11 +23,14 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
  * The stock icon resolves marker-icon.png by URL relative to the CSS, which
  * bundlers rewrite and Leaflet then 404s on - the classic "markers are
  * invisible" bug. Inline SVG has no asset to lose.
+ *
+ * Filled with the brand token’s literal value, the same as the results map:
+ * this string is handed to Leaflet, so a class name would never be compiled.
  */
 const pinIcon = L.divIcon({
   className: "",
   html: `<svg width="28" height="40" viewBox="0 0 28 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 26 14 26s14-15.5 14-26c0-7.73-6.27-14-14-14z" fill="#0f172a"/>
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 26 14 26s14-15.5 14-26c0-7.73-6.27-14-14-14z" fill="#0f756d"/>
     <circle cx="14" cy="14" r="5.5" fill="#ffffff"/>
   </svg>`,
   iconSize: [28, 40],
@@ -40,7 +44,7 @@ export default function MapView({
   longitude,
   name,
   zoom = 15,
-  className = "h-64 w-full rounded-lg",
+  className = "h-64 w-full rounded-card",
 }: {
   latitude: number;
   longitude: number;
