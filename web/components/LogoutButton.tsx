@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { Button } from "@/components/ds/primitives";
+
 /** Clears the session cookies via the session route, then refreshes. */
 export default function LogoutButton(): JSX.Element {
   const router = useRouter();
@@ -23,13 +25,14 @@ export default function LogoutButton(): JSX.Element {
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
+      size="sm"
       onClick={signOut}
       disabled={busy || isPending}
-      className="rounded border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
     >
-      {busy || isPending ? "Signing out..." : "Sign out"}
-    </button>
+      {busy || isPending ? "Signing out…" : "Sign out"}
+    </Button>
   );
 }

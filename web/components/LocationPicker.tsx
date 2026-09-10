@@ -62,7 +62,7 @@ export default function LocationPicker({
         center={centre}
         zoom={hasPoint ? 15 : 12}
         scrollWheelZoom={false}
-        className="h-64 w-full rounded-lg"
+        className="h-64 w-full rounded-card"
         style={{ zIndex: 0 }}
       >
         <TileLayer
@@ -75,7 +75,7 @@ export default function LocationPicker({
           <Marker position={[latitude as number, longitude as number]} icon={pinIcon} />
         ) : null}
       </MapContainer>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-meta text-ink-subtle">
         {hasPoint
           ? `Pin at ${(latitude as number).toFixed(5)}, ${(longitude as number).toFixed(5)} - click the map to move it.`
           : "Click the map to drop a pin for this business."}

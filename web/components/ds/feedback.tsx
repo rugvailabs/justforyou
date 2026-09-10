@@ -8,7 +8,14 @@
  */
 
 import Link from "next/link";
-import { ChevronRight, SearchX } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  Info,
+  SearchX,
+  XCircle,
+} from "lucide-react";
 
 import { Button, Card } from "@/components/ds/primitives";
 import { cn } from "@/lib/cn";
@@ -58,6 +65,67 @@ export function Breadcrumbs({
   );
 }
 
+/* ----------------------------------------------------------------- Alert */
+
+/**
+ * One banner for every "something went wrong" and every "that worked".
+ *
+ * A banner rather than a toast, deliberately: these are almost always attached
+ * to a form the person is still looking at, and a toast that disappears takes
+ * the explanation with it before it can be acted on.
+ *
+ * The tone is carried by the icon and the words as well as the colour, so it
+ * survives monochrome and colour-blindness. Errors interrupt (role=alert);
+ * everything else is announced politely.
+ */
+const ALERT_TONES = {
+  error: { className: "border-danger/30 bg-danger-bg text-danger", Icon: XCircle, label: "Error" },
+  warning: {
+    className: "border-warning/30 bg-warning-bg text-warning",
+    Icon: AlertTriangle,
+    label: "Warning",
+  },
+  success: {
+    className: "border-success/30 bg-success-bg text-success",
+    Icon: CheckCircle2,
+    label: "Success",
+  },
+  info: { className: "border-line bg-surface-muted text-ink-muted", Icon: Info, label: "Note" },
+} as const;
+
+export type AlertTone = keyof typeof ALERT_TONES;
+
+export function Alert({
+  tone = "error",
+  title,
+  children,
+  className,
+}: {
+  tone?: AlertTone;
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+}): JSX.Element {
+  const { className: toneClass, Icon, label } = ALERT_TONES[tone];
+  return (
+    <div
+      role={tone === "error" ? "alert" : "status"}
+      className={cn(
+        "flex gap-2.5 rounded-input border px-3 py-2.5 text-body",
+        toneClass,
+        className,
+      )}
+    >
+      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <div className="min-w-0">
+        <span className="sr-only">{label}: </span>
+        {title !== undefined ? <p className="font-semibold">{title}</p> : null}
+        <div className={title !== undefined ? "mt-0.5" : undefined}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------- EmptyState */
 
 export function EmptyState({
@@ -93,7 +161,17 @@ export function EmptyState({
 
 /* -------------------------------------------------- ListingCardSkeleton */
 
-function Bar({ className }: { className?: string }): JSX.Element {
+/**
+ * One placeholder bar.
+ *
+ * A shimmer rather than a pulse: a pulsing block reads as something broken
+ * flashing, where a sweep reads as motion in one direction and so as progress.
+ * It respects prefers-reduced-motion by dropping to a plain block, which is
+ * still a correctly-shaped placeholder.
+ *
+ * Exported because every loading.tsx was declaring its own copy.
+ */
+export function Skeleton({ className }: { className?: string }): JSX.Element {
   return (
     <span
       className={cn(
@@ -106,6 +184,32 @@ function Bar({ className }: { className?: string }): JSX.Element {
     />
   );
 }
+
+/**
+ * Wraps a set of skeletons in the one announcement they should make.
+ *
+ * Without this each bar is its own aria-hidden div inside a live region and a
+ * screen reader hears nothing useful; with it, "Loading your listings" is said
+ * once and the bars stay decorative.
+ */
+export function SkeletonRegion({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}): JSX.Element {
+  return (
+    <div role="status" aria-live="polite" aria-busy="true" className={className}>
+      <span className="sr-only">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+const Bar = Skeleton;
 
 export function ListingCardSkeleton(): JSX.Element {
   return (

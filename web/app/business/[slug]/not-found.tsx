@@ -1,30 +1,47 @@
+/**
+ * Rendered when notFound() fires for an unknown slug.
+ *
+ * Carries the real header and footer rather than a bare wordmark: a dead link
+ * is exactly the moment somebody needs the search box and the rest of the
+ * site, not a cul-de-sac with two buttons on it.
+ */
+
 import Link from "next/link";
+import { SearchX } from "lucide-react";
 
-import Card from "@/components/ui/Card";
-import { ButtonLink } from "@/components/ui/Button";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
+import { Button, Card } from "@/components/ds/primitives";
 
-/** Rendered when notFound() fires for an unknown slug. */
 export default function BusinessNotFound(): JSX.Element {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16">
-      <header className="mb-8">
-        <Link href="/" className="text-lg font-semibold">
-          JustDial CA
-        </Link>
-      </header>
-      <Card>
-        <h1 className="text-xl font-semibold text-slate-900">Listing not found</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          No business matches that address. It may have been removed, or the
-          link may be mistyped.
-        </p>
-        <div className="mt-4 flex gap-2">
-          <ButtonLink href="/search">Browse all listings</ButtonLink>
-          <ButtonLink href="/" variant="secondary">
-            Home
-          </ButtonLink>
-        </div>
-      </Card>
-    </div>
+    <>
+      {/* @ts-expect-error Async Server Component in a sync parent - allowed in
+          the App Router, not yet expressible in the type system. */}
+      <SiteHeader locale="en" />
+
+      <main className="mx-auto max-w-2xl px-4 py-section sm:px-6">
+        <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <span className="flex size-10 items-center justify-center rounded-pill bg-surface-muted text-ink-faint">
+            <SearchX className="size-5" aria-hidden="true" />
+          </span>
+          <h1 className="text-section-heading text-ink">Listing not found</h1>
+          <p className="max-w-prose text-body text-ink-muted">
+            No business matches that address. It may have been removed, or the
+            link may be mistyped.
+          </p>
+          <div className="mt-1 flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link href="/search">Browse all listings</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/">Home</Link>
+            </Button>
+          </div>
+        </Card>
+      </main>
+
+      <SiteFooter locale="en" />
+    </>
   );
 }

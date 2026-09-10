@@ -20,9 +20,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import Alert from "@/components/ui/Alert";
-import Button from "@/components/ui/Button";
-import { FIELD, LABEL } from "@/components/ui/field";
+import { Alert } from "@/components/ds/feedback";
+import { Button } from "@/components/ds/primitives";
+import { FIELD, LABEL } from "@/components/ds/form";
 import type { BusinessVerification } from "@/lib/types";
 
 type UploadState =
@@ -200,7 +200,7 @@ export default function VerificationForm({
             className={FIELD}
             placeholder="owner@yourbusiness.ca"
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-meta text-ink-subtle">
             Where a reviewer reaches you. It is not shown on your public page.
           </p>
         </div>
@@ -219,17 +219,17 @@ export default function VerificationForm({
             className={FIELD}
             placeholder="+1 604 555 0142"
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-meta text-ink-subtle">
             Include the area code.
           </p>
         </div>
       </div>
 
-      <fieldset className="rounded-md border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">
-          Trade licence <span className="font-normal text-slate-500">(optional)</span>
+      <fieldset className="rounded-input border border-line p-4">
+        <legend className="px-1 text-body font-medium text-ink-muted">
+          Trade licence <span className="font-normal text-ink-subtle">(optional)</span>
         </legend>
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-meta text-ink-subtle">
           If your trade is licensed, give the number and a scan. A copywriter or
           a consultant has neither, and that is fine - a reviewer judges what is
           appropriate for the trade.
@@ -265,11 +265,11 @@ export default function VerificationForm({
         </div>
       </fieldset>
 
-      <fieldset className="rounded-md border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">
-          GST/HST <span className="font-normal text-slate-500">(optional)</span>
+      <fieldset className="rounded-input border border-line p-4">
+        <legend className="px-1 text-body font-medium text-ink-muted">
+          GST/HST <span className="font-normal text-ink-subtle">(optional)</span>
         </legend>
-        <p className="mb-3 text-xs text-slate-500">
+        <p className="mb-3 text-meta text-ink-subtle">
           Leave blank if you are under the small-supplier threshold and not
           registered.
         </p>
@@ -286,7 +286,7 @@ export default function VerificationForm({
               className={FIELD}
               placeholder="123456789RT0001"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-meta text-ink-subtle">
               Nine digits, then RT and four more.
             </p>
           </div>
@@ -341,7 +341,7 @@ export default function VerificationForm({
                 ? "Submit for verification"
                 : "Resubmit for verification"}
           </Button>
-          <p className="text-xs text-slate-500">
+          <p className="text-meta text-ink-subtle">
             A reviewer checks this by hand, so it is not instant.
           </p>
         </div>
@@ -379,33 +379,33 @@ function DocumentField({
           const file = e.target.files?.[0];
           if (file) onFile(file);
         }}
-        className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+        className="block w-full text-body text-ink-muted file:mr-3 file:rounded-input file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-body file:font-medium file:text-ink-inverse hover:file:bg-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       />
 
-      <div className="mt-1 text-xs" aria-live="polite">
+      <div className="mt-1 text-meta" aria-live="polite">
         {state.kind === "uploading" ? (
-          <span className="text-slate-500">Uploading…</span>
+          <span className="text-ink-subtle">Uploading…</span>
         ) : state.kind === "error" ? (
-          <span className="text-red-700">{state.message}</span>
+          <span className="text-danger">{state.message}</span>
         ) : state.kind === "done" ? (
-          <span className="text-emerald-700">
+          <span className="text-success">
             {state.stub
               ? `${state.filename} recorded (storage not configured, so the file was not stored)`
               : `${state.filename} uploaded`}
           </span>
         ) : existingLabel !== null ? (
-          <span className="text-slate-500">
+          <span className="text-ink-subtle">
             On file: {existingLabel}{" "}
             <button
               type="button"
               onClick={onClear}
-              className="underline hover:text-slate-700"
+              className="underline hover:text-ink-muted"
             >
               remove
             </button>
           </span>
         ) : (
-          <span className="text-slate-500">PDF or image, up to 10 MB.</span>
+          <span className="text-ink-subtle">PDF or image, up to 10 MB.</span>
         )}
       </div>
     </div>

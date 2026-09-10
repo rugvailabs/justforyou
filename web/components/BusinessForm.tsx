@@ -16,17 +16,16 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import Alert from "@/components/ui/Alert";
-import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
-import { FIELD } from "@/components/ui/field";
+import { Alert } from "@/components/ds/feedback";
+import { Button, Card } from "@/components/ds/primitives";
+import { FIELD, LABEL } from "@/components/ds/form";
 import type { BusinessCreate, BusinessDetail, Category } from "@/lib/types";
 
 // Leaflet touches window at import, so it can never be server-rendered.
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-64 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-sm text-slate-500">
+    <div className="flex h-64 w-full items-center justify-center rounded-card border border-line bg-surface-muted text-body text-ink-subtle">
       Loading map…
     </div>
   ),
@@ -167,11 +166,11 @@ export default function BusinessForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <Card className="space-y-4">
-        <h2 className="font-semibold text-slate-900">Basics</h2>
+      <Card className="space-y-4 p-4">
+        <h2 className="font-semibold text-ink">Basics</h2>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className={LABEL}>
             Business name
           </span>
           <input
@@ -184,7 +183,7 @@ export default function BusinessForm({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className={LABEL}>
             Category
           </span>
           <select
@@ -203,7 +202,7 @@ export default function BusinessForm({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className={LABEL}>
             Description
           </span>
           <textarea
@@ -216,7 +215,7 @@ export default function BusinessForm({
         </label>
 
         <label className="block sm:w-40">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className={LABEL}>
             Price range
           </span>
           <select
@@ -233,11 +232,11 @@ export default function BusinessForm({
         </label>
       </Card>
 
-      <Card className="space-y-4">
-        <h2 className="font-semibold text-slate-900">Contact</h2>
+      <Card className="space-y-4 p-4">
+        <h2 className="font-semibold text-ink">Contact</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               Phone
             </span>
             <input
@@ -249,7 +248,7 @@ export default function BusinessForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               WhatsApp
             </span>
             <input
@@ -261,7 +260,7 @@ export default function BusinessForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               Email
             </span>
             <input
@@ -273,7 +272,7 @@ export default function BusinessForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               Website
             </span>
             <input
@@ -287,11 +286,11 @@ export default function BusinessForm({
         </div>
       </Card>
 
-      <Card className="space-y-4">
-        <h2 className="font-semibold text-slate-900">Location</h2>
+      <Card className="space-y-4 p-4">
+        <h2 className="font-semibold text-ink">Location</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block sm:col-span-2">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               Street address
             </span>
             <input
@@ -302,7 +301,7 @@ export default function BusinessForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               City
             </span>
             <input
@@ -314,7 +313,7 @@ export default function BusinessForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               Province
             </span>
             <input
@@ -326,7 +325,7 @@ export default function BusinessForm({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className={LABEL}>
               Postal code
             </span>
             <input
@@ -348,27 +347,27 @@ export default function BusinessForm({
         />
       </Card>
 
-      <Card className="space-y-4">
-        <h2 className="font-semibold text-slate-900">Tags</h2>
+      <Card className="space-y-4 p-4">
+        <h2 className="font-semibold text-ink">Tags</h2>
         <div className="flex flex-wrap gap-2">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 ring-1 ring-inset ring-slate-200"
+              className="inline-flex items-center gap-1 rounded-pill bg-surface-muted px-2 py-0.5 text-meta text-ink-muted ring-1 ring-inset ring-line"
             >
               {tag}
               <button
                 type="button"
                 onClick={() => setTags(tags.filter((t) => t !== tag))}
                 aria-label={`Remove tag ${tag}`}
-                className="rounded text-slate-500 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+                className="rounded text-ink-subtle hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 ×
               </button>
             </span>
           ))}
           {tags.length === 0 ? (
-            <span className="text-sm text-slate-500">No tags yet.</span>
+            <span className="text-body text-ink-subtle">No tags yet.</span>
           ) : null}
         </div>
         <div className="flex gap-2">
@@ -391,9 +390,9 @@ export default function BusinessForm({
         </div>
       </Card>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold text-slate-900">Opening hours</h2>
-        <p className="text-sm text-slate-600">
+      <Card className="space-y-3 p-4">
+        <h2 className="font-semibold text-ink">Opening hours</h2>
+        <p className="text-body text-ink-muted">
           Leave a day blank to mark it closed.
         </p>
         <div className="space-y-2">
@@ -401,19 +400,19 @@ export default function BusinessForm({
             const range = dayRange(hours, key);
             return (
               <div key={key} className="flex flex-wrap items-center gap-2">
-                <span className="w-20 flex-none text-sm text-slate-700 sm:w-24">{label}</span>
+                <span className="w-20 flex-none text-body text-ink-muted sm:w-24">{label}</span>
                 <input
                   type="time"
                   value={range?.[0] ?? ""}
                   onChange={(e) => setDay(key, e.target.value, range?.[1] ?? "")}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  className="rounded-input border border-line-strong px-2 py-1 text-body"
                 />
-                <span className="text-slate-400">–</span>
+                <span className="text-ink-subtle">–</span>
                 <input
                   type="time"
                   value={range?.[1] ?? ""}
                   onChange={(e) => setDay(key, range?.[0] ?? "", e.target.value)}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+                  className="rounded-input border border-line-strong px-2 py-1 text-body"
                 />
               </div>
             );
@@ -426,7 +425,7 @@ export default function BusinessForm({
       ) : null}
 
       {mode === "edit" && listing?.status === "approved" ? (
-        <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded bg-warning-bg px-3 py-2 text-body text-warning">
           This listing is live. Saving changes sends it back for review, so it
           will be hidden from search until approved again.
         </p>

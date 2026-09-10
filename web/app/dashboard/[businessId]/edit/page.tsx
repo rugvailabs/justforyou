@@ -5,18 +5,31 @@
  * for one that does not exist). This page's job is to turn those into
  * something sensible rather than a crash: both send the owner back to
  * /dashboard with a reason in the query string.
+ *
+ * The status badge sits beside the title because editing an approved listing
+ * is not the same act as editing a pending one - a change here can send it
+ * back for review, and the owner should be able to see which case they are in
+ * before they start typing.
  */
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 import BusinessForm from "@/components/BusinessForm";
-import StatusBadge from "@/components/StatusBadge";
+import DashboardNav from "@/components/ds/DashboardNav";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
+import { Button } from "@/components/ds/primitives";
+import { ListingStatusBadge } from "@/components/ds/status";
 import { ApiError, getCategories, getMyBusiness } from "@/lib/api";
 import { requireBusinessOwner } from "@/lib/auth";
+import { DEFAULT_LOCALE } from "@/lib/i18n";
 import type { BusinessDetail } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const locale = DEFAULT_LOCALE;
 
 export default async function EditListingPage({
   params,
@@ -43,19 +56,30 @@ export default async function EditListingPage({
   const categories = await getCategories();
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <header className="mb-6">
-        <Link href="/dashboard" className="text-sm underline">
-          ← Back to your listings
-        </Link>
+    <>
+      <SiteHeader locale={locale} showSearch={false} />
+
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+        <Button asChild variant="link" size="sm" className="-ml-1 h-auto px-1">
+          <Link href="/dashboard">
+            <ArrowLeft aria-hidden="true" />
+            Your listings
+          </Link>
+        </Button>
+
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            {listing.name}
-          </h1>
-          <StatusBadge status={listing.status} showHint />
+          <h1 className="text-page-title text-ink">{listing.name}</h1>
+          <ListingStatusBadge status={listing.status} showHint />
         </div>
-      </header>
-      <BusinessForm mode="edit" categories={categories} listing={listing} />
-    </div>
+
+        <DashboardNav businessId={businessId} current="edit" className="mt-4" />
+
+        <div className="mt-4">
+          <BusinessForm mode="edit" categories={categories} listing={listing} />
+        </div>
+      </main>
+
+      <SiteFooter locale={locale} />
+    </>
   );
 }

@@ -8,22 +8,8 @@
  */
 
 import SiteHeader from "@/components/ds/SiteHeader";
+import { Skeleton as Bar } from "@/components/ds/feedback";
 import { Card } from "@/components/ds/primitives";
-import { cn } from "@/lib/cn";
-
-function Bar({ className }: { className?: string }): JSX.Element {
-  return (
-    <span
-      className={cn(
-        "relative block overflow-hidden rounded-sm bg-surface-muted",
-        "after:absolute after:inset-0 after:-translate-x-full after:animate-shimmer",
-        "after:bg-gradient-to-r after:from-transparent after:via-line/60 after:to-transparent",
-        "motion-reduce:after:hidden",
-        className,
-      )}
-    />
-  );
-}
 
 export default function Loading(): JSX.Element {
   return (

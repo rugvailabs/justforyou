@@ -11,29 +11,25 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
-import Header from "@/components/Header";
-import StatusBadge from "@/components/StatusBadge";
-import VerificationBadge from "@/components/VerificationBadge";
+import DashboardNav from "@/components/ds/DashboardNav";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
 import VerificationForm from "@/components/VerificationForm";
-import Alert from "@/components/ui/Alert";
-import Card from "@/components/ui/Card";
+import { Alert } from "@/components/ds/feedback";
+import { Button, Card } from "@/components/ds/primitives";
+import { KycBadge, ListingStatusBadge } from "@/components/ds/status";
 import { ApiError, getMyBusiness, getVerification } from "@/lib/api";
 import { requireBusinessOwner } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
+import { DEFAULT_LOCALE, INTL_LOCALE } from "@/lib/i18n";
 import type { BusinessDetail, BusinessVerification } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-function formatWhen(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : date.toLocaleDateString("en-CA", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-}
+const locale = DEFAULT_LOCALE;
+const intl = INTL_LOCALE[locale];
 
 export default async function VerificationPage({
   params,
@@ -76,119 +72,119 @@ export default async function VerificationPage({
   const live = moderationDone && kycDone;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <Header />
+    <>
+      <SiteHeader locale={locale} showSearch={false} />
 
-      <Link href="/dashboard" className="text-sm underline">
-        &larr; Your listings
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-        Verify {listing.name}
-      </h1>
-      <p className="mt-1 text-sm text-slate-600">
-        We check that the business behind a listing is real before it appears in
-        search. This is separate from the review of the listing&apos;s content.
-      </p>
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+        <Button asChild variant="link" size="sm" className="-ml-1 h-auto px-1">
+          <Link href="/dashboard">
+            <ArrowLeft aria-hidden="true" />
+            Your listings
+          </Link>
+        </Button>
 
-      {loadError !== null ? (
-        <div className="mt-5">
-          <Alert tone="error" title="Could not load the verification status">
+        <h1 className="mt-2 text-page-title text-ink">Verify {listing.name}</h1>
+        <p className="mt-1 max-w-prose text-body text-ink-muted">
+          We check that the business behind a listing is real before it appears
+          in search. This is separate from the review of the listing&apos;s
+          content.
+        </p>
+
+        <DashboardNav businessId={businessId} current="verification" className="mt-4" />
+
+        {loadError !== null ? (
+          <Alert
+            tone="error"
+            title="Could not load the verification status"
+            className="mt-4"
+          >
             {loadError}
           </Alert>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Both gates, side by side, because "why is my listing not showing up"
-          has two possible answers and the owner cannot act on the wrong one. */}
-      <Card className="mt-5">
-        <h2 className="font-semibold text-slate-900">
-          {live
-            ? "This listing is live"
-            : "What this listing still needs"}
-        </h2>
+        {/* Both gates together, because "why is my listing not showing up" has
+            two possible answers and the owner cannot act on the wrong one. */}
+        <Card className="mt-4 p-4">
+          <h2 className="text-section-heading text-ink">
+            {live ? "This listing is live" : "What this listing still needs"}
+          </h2>
 
-        <dl className="mt-3 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <dt className="text-sm text-slate-700">Listing review</dt>
-            <dd>
-              <StatusBadge status={listing.status} showHint />
-            </dd>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <dt className="text-sm text-slate-700">Business verification</dt>
-            <dd>
-              <VerificationBadge
-                status={verification?.status ?? null}
-                showHint
-              />
-            </dd>
-          </div>
-        </dl>
+          <dl className="mt-3 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <dt className="text-body text-ink-muted">Listing review</dt>
+              <dd>
+                <ListingStatusBadge status={listing.status} showHint />
+              </dd>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <dt className="text-body text-ink-muted">Business verification</dt>
+              <dd>
+                <KycBadge status={verification?.status ?? null} showHint />
+              </dd>
+            </div>
+          </dl>
 
-        <p className="mt-3 text-sm text-slate-600">
-          {live ? (
-            <>
-              Both checks have passed, so {listing.name} appears in public
-              search.
-            </>
-          ) : (
-            <>
-              A listing appears in search only once both are done. Right now it
-              is {moderationDone ? "approved" : "waiting on a moderator"} and{" "}
-              {kycDone
-                ? "verified"
-                : verification === null
-                  ? "not verified yet"
-                  : verification.status === "pending"
-                    ? "waiting on verification"
-                    : "rejected on verification"}
-              .
-            </>
-          )}
-        </p>
-      </Card>
+          <p className="mt-3 text-body text-ink-muted">
+            {live ? (
+              <>Both checks have passed, so {listing.name} appears in public search.</>
+            ) : (
+              <>
+                A listing appears in search only once both are done. Right now it
+                is {moderationDone ? "approved" : "waiting on a moderator"} and{" "}
+                {kycDone
+                  ? "verified"
+                  : verification === null
+                    ? "not verified yet"
+                    : verification.status === "pending"
+                      ? "waiting on verification"
+                      : "rejected on verification"}
+                .
+              </>
+            )}
+          </p>
+        </Card>
 
-      {verification?.status === "rejected" &&
-      verification.rejection_reason !== null ? (
-        <div className="mt-4">
-          <Alert tone="error" title="A reviewer could not verify this">
+        {verification?.status === "rejected" &&
+        verification.rejection_reason !== null ? (
+          <Alert tone="error" title="A reviewer could not verify this" className="mt-4">
             <p>{verification.rejection_reason}</p>
-            <p className="mt-1 text-xs">
-              Reviewed {verification.reviewed_at !== null
-                ? `on ${formatWhen(verification.reviewed_at)}`
+            <p className="mt-1 text-meta">
+              Reviewed{" "}
+              {verification.reviewed_at !== null
+                ? `on ${formatDate(verification.reviewed_at, intl)}`
                 : "recently"}
               . Fix what is described above and send it again.
             </p>
           </Alert>
-        </div>
-      ) : null}
+        ) : null}
 
-      {verification?.status === "pending" ? (
-        <div className="mt-4">
-          <Alert tone="info" title="With a reviewer">
-            Submitted {formatWhen(verification.submitted_at)}. You can send
-            corrected details below at any time; the latest submission is the
-            one that gets reviewed.
+        {verification?.status === "pending" ? (
+          <Alert tone="info" title="With a reviewer" className="mt-4">
+            Submitted {formatDate(verification.submitted_at, intl)}. You can send
+            corrected details below at any time; the latest submission is the one
+            that gets reviewed.
           </Alert>
-        </div>
-      ) : null}
+        ) : null}
 
-      <Card className="mt-4">
-        <h2 className="mb-4 font-semibold text-slate-900">
-          {verification === null ? "Your details" : "Update your details"}
-        </h2>
-        <VerificationForm
-          businessId={businessId}
-          businessName={listing.name}
-          existing={verification}
-        />
-      </Card>
+        <Card className="mt-4 p-4">
+          <h2 className="mb-4 text-section-heading text-ink">
+            {verification === null ? "Your details" : "Update your details"}
+          </h2>
+          <VerificationForm
+            businessId={businessId}
+            businessName={listing.name}
+            existing={verification}
+          />
+        </Card>
 
-      <p className="mt-4 text-xs text-slate-500">
-        Documents are stored separately from your public listing and are only
-        read by a reviewer. Your licence and GST numbers never appear on your
-        public page.
-      </p>
-    </div>
+        <p className="mt-4 max-w-prose text-meta text-ink-subtle">
+          Documents are stored separately from your public listing and are only
+          read by a reviewer. Your licence and GST numbers never appear on your
+          public page.
+        </p>
+      </main>
+
+      <SiteFooter locale={locale} />
+    </>
   );
 }

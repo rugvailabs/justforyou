@@ -13,8 +13,8 @@
 import { useState } from "react";
 
 import OwnerReplyForm from "@/components/OwnerReplyForm";
-import Card from "@/components/ui/Card";
-import RatingStars from "@/components/ui/RatingStars";
+import { RatingPill } from "@/components/ds/indicators";
+import { Card } from "@/components/ds/primitives";
 import type { BusinessReview } from "@/lib/types";
 
 function formatWhen(iso: string): string {
@@ -56,35 +56,35 @@ export default function OwnerReviewList({
     <ul className="space-y-4">
       {reviews.map((review) => (
         <li key={review.id}>
-          <Card>
+          <Card className="p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <RatingStars rating={review.rating} showCount={false} />
+                <RatingPill rating={review.rating} size="sm" />
                 {review.title !== null ? (
-                  <h2 className="mt-1 font-semibold text-slate-900">
+                  <h2 className="mt-1 font-semibold text-ink">
                     {review.title}
                   </h2>
                 ) : null}
               </div>
-              <div className="text-right text-sm text-slate-500">
+              <div className="text-right text-body text-ink-subtle">
                 <div>{review.author_name}</div>
                 <div>{formatWhen(review.created_at)}</div>
               </div>
             </div>
 
             {review.body !== null ? (
-              <p className="mt-2 text-sm text-slate-700">{review.body}</p>
+              <p className="mt-2 text-body text-ink-muted">{review.body}</p>
             ) : null}
 
             {review.owner_reply !== null ? (
-              <div className="mt-3 rounded-md border-l-2 border-slate-300 bg-slate-50 px-3 py-2">
-                <p className="text-xs font-medium text-slate-500">
+              <div className="mt-3 rounded-input border-l-2 border-line-strong bg-surface-muted px-3 py-2">
+                <p className="text-meta font-medium text-ink-subtle">
                   Your reply
                   {review.owner_replied_at !== null
                     ? ` · ${formatWhen(review.owner_replied_at)}`
                     : ""}
                 </p>
-                <p className="mt-1 text-sm text-slate-700">{review.owner_reply}</p>
+                <p className="mt-1 text-body text-ink-muted">{review.owner_reply}</p>
               </div>
             ) : (
               <OwnerReplyForm

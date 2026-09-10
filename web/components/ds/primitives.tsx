@@ -104,6 +104,7 @@ export const badgeVariants = cva(
         neutral: "bg-surface-muted text-ink-muted ring-line",
         brand: "bg-brand-50 text-brand-800 ring-brand-200",
         verified: "bg-verified-bg text-verified ring-verified/30",
+        success: "bg-success-bg text-success ring-success/30",
         sponsored: "bg-sponsored-bg text-sponsored ring-sponsored/30",
         open: "bg-open-bg text-open ring-open/30",
         closed: "bg-closed-bg text-closed ring-closed/30",

@@ -63,7 +63,7 @@
     /* Each of these is the text colour inside its own tinted badge, so it is
        darkened to the point where 11px type clears 4.5:1 on white - which is
        darker than the colour looks like it wants to be. */
-    --open: 152 60% 32%;
+    --open: 152 60% 31%;
     --open-bg: 152 60% 96%;
     --closed: 0 63% 45%;
     --closed-bg: 0 78% 97%;
@@ -73,7 +73,7 @@
     --verified-bg: 166 76% 96%;
     --danger: 0 72% 45%;
     --danger-bg: 0 78% 97%;
-    --warning: 32 85% 36%;
+    --warning: 32 85% 35%;
     --warning-bg: 44 96% 95%;
     --success: 152 60% 31%;
     --success-bg: 152 60% 96%;

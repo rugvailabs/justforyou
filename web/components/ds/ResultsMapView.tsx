@@ -110,7 +110,7 @@ export default function ResultsMapView({
             <span className="block text-[0.8125rem] font-semibold">
               {business.name}
             </span>
-            <span className="block text-[0.75rem] text-slate-600">
+            <span className="block text-[0.75rem] text-ink-muted">
               {formatLocality(business.city, business.province)}
             </span>
             {business.rating !== null ? (

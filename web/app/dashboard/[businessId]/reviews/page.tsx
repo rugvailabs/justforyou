@@ -8,17 +8,27 @@
  * Owners can reply but not delete - removing a review is an admin action in
  * the backend, and a business deleting its own bad reviews would make the
  * whole rating meaningless.
+ *
+ * The summary here is the real one, from the reviews endpoint, not the
+ * denormalised rating on the business row. On this page that distinction
+ * matters: an owner looking at their own reviews is counting the ones they
+ * have to answer, and the row's number does not correspond to them.
  */
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 
+import DashboardNav from "@/components/ds/DashboardNav";
 import OwnerReviewList from "@/components/OwnerReviewList";
-import Card from "@/components/ui/Card";
-import RatingStars from "@/components/ui/RatingStars";
-import { ButtonLink } from "@/components/ui/Button";
+import RatingBreakdown from "@/components/ds/RatingBreakdown";
+import SiteFooter from "@/components/ds/SiteFooter";
+import SiteHeader from "@/components/ds/SiteHeader";
+import { EmptyState } from "@/components/ds/feedback";
+import { Button, Card } from "@/components/ds/primitives";
 import { ApiError, getMyBusiness, getReviewSummary, getReviews } from "@/lib/api";
 import { requireBusinessOwner } from "@/lib/auth";
+import { DEFAULT_LOCALE } from "@/lib/i18n";
 import type {
   BusinessDetail,
   BusinessReview,
@@ -26,6 +36,8 @@ import type {
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const locale = DEFAULT_LOCALE;
 
 export default async function DashboardReviewsPage({
   params,
@@ -53,9 +65,9 @@ export default async function DashboardReviewsPage({
     throw error;
   }
 
-  // A listing awaiting approval is not publicly readable, so the public
-  // review endpoints 404 for it. That is not an error worth showing - it just
-  // means there is nothing to manage yet.
+  // A listing awaiting approval is not publicly readable, so the public review
+  // endpoints 404 for it. That is not an error worth showing - it just means
+  // there is nothing to manage yet.
   try {
     [reviews, summary] = await Promise.all([
       getReviews(businessId, { limit: 100 }),
@@ -68,48 +80,60 @@ export default async function DashboardReviewsPage({
   const unanswered = reviews.filter((r) => r.owner_reply === null).length;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <header className="mb-6">
-        <Link href="/dashboard" className="text-sm underline">
-          ← Back to your listings
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-          Reviews for {listing.name}
-        </h1>
-        {summary !== null && summary.review_count > 0 ? (
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <RatingStars
-              rating={summary.average_rating}
-              reviewCount={summary.review_count}
-            />
-            {unanswered > 0 ? (
-              <span className="text-sm text-amber-700">
-                {unanswered} awaiting a reply
-              </span>
-            ) : (
-              <span className="text-sm text-emerald-700">All replied to</span>
-            )}
-          </div>
-        ) : null}
-      </header>
+    <>
+      <SiteHeader locale={locale} showSearch={false} />
 
-      {reviews.length === 0 ? (
-        <Card>
-          <h2 className="font-semibold text-slate-900">No reviews yet</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {listing.status === "approved"
-              ? "When customers review this listing, they will appear here and you can reply to each one."
-              : "This listing is not publicly visible yet, so customers cannot review it."}
-          </p>
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+        <Button asChild variant="link" size="sm" className="-ml-1 h-auto px-1">
+          <Link href="/dashboard">
+            <ArrowLeft aria-hidden="true" />
+            Your listings
+          </Link>
+        </Button>
+
+        <h1 className="mt-2 text-page-title text-ink">Reviews for {listing.name}</h1>
+        <p className="mt-1 text-body text-ink-muted">
+          {reviews.length === 0
+            ? "Nothing to answer yet."
+            : unanswered > 0
+              ? `${unanswered} of ${reviews.length} still awaiting a reply.`
+              : "Every review has been answered."}
+        </p>
+
+        <DashboardNav
+          businessId={businessId}
+          current="reviews"
+          className="mt-4"
+          unansweredReviews={unanswered}
+        />
+
+        {summary !== null && summary.review_count > 0 ? (
+          <Card className="mt-4 p-4">
+            <h2 className="sr-only">Rating breakdown</h2>
+            <RatingBreakdown summary={summary} locale={locale} />
+          </Card>
+        ) : null}
+
+        {reviews.length === 0 ? (
+          <EmptyState
+            className="mt-4"
+            icon={<MessageSquare className="size-5" aria-hidden="true" />}
+            title="No reviews yet"
+            body={
+              listing.status === "approved"
+                ? "When customers review this listing, they will appear here and you can reply to each one."
+                : "This listing is not publicly visible yet, so customers cannot review it."
+            }
+            action={{ label: "Back to listings", href: "/dashboard" }}
+          />
+        ) : (
           <div className="mt-4">
-            <ButtonLink href="/dashboard" variant="secondary" size="sm">
-              Back to listings
-            </ButtonLink>
+            <OwnerReviewList businessId={businessId} reviews={reviews} />
           </div>
-        </Card>
-      ) : (
-        <OwnerReviewList businessId={businessId} reviews={reviews} />
-      )}
-    </div>
+        )}
+      </main>
+
+      <SiteFooter locale={locale} />
+    </>
   );
 }

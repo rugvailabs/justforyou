@@ -16,9 +16,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import Alert from "@/components/ui/Alert";
-import Button from "@/components/ui/Button";
-import { FIELD } from "@/components/ui/field";
+import { Alert } from "@/components/ds/feedback";
+import { Button } from "@/components/ds/primitives";
+import { FIELD, LABEL } from "@/components/ds/form";
 
 export default function OwnerReplyForm({
   businessId,
@@ -71,9 +71,9 @@ export default function OwnerReplyForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-3 border-t border-slate-100 pt-3">
+    <form onSubmit={onSubmit} className="mt-3 border-t border-line pt-3">
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">
+        <span className={LABEL}>
           Reply publicly
         </span>
         <textarea
@@ -86,7 +86,7 @@ export default function OwnerReplyForm({
         />
       </label>
 
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-meta text-ink-subtle">
         Your reply is shown publicly under this review, and can only be posted
         once.
       </p>
