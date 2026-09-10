@@ -98,6 +98,51 @@ export const HERO_CARDS: readonly HeroCard[] = [
   },
 ] as const;
 
+/**
+ * Travel tiles: a curated, ordered set, separate from the full taxonomy.
+ *
+ * Two of these are real directory categories with real listings behind them.
+ * The other three are not, and are marked so rather than linked: flights,
+ * buses and trains are ticketing, which is a different product from a
+ * directory - and the Canadian partners that would make them real have not
+ * been researched. A tile that looks live and leads nowhere is the thing worth
+ * avoiding, so they carry no href and render as <div>s.
+ */
+export const TRAVEL_TILES: readonly HeroCard[] = [
+  {
+    id: "hotels",
+    title: "Hotels & Stays",
+    blurb: "Hotels and inns across Metro Vancouver",
+    href: "/bc/vancouver/hotels",
+    image: { src: "/hero/card-hotels.svg", alt: "" },
+  },
+  {
+    id: "car-rentals",
+    title: "Car Rentals",
+    blurb: "Cars, vans and trucks by the day",
+    href: "/bc/vancouver/car-rentals",
+    image: { src: "/hero/card-car-rentals.svg", alt: "" },
+  },
+  {
+    id: "flights",
+    title: "Flights - coming soon",
+    blurb: "Needs an airline or agency partner first",
+    image: { src: "/hero/card-soon.svg", alt: "" },
+  },
+  {
+    id: "buses",
+    title: "Buses - coming soon",
+    blurb: "Needs a coach operator partner first",
+    image: { src: "/hero/card-soon.svg", alt: "" },
+  },
+  {
+    id: "trains",
+    title: "Trains - coming soon",
+    blurb: "No clean Canadian equivalent yet",
+    image: { src: "/hero/card-soon.svg", alt: "" },
+  },
+] as const;
+
 /** How long a slide is shown before the next one, in milliseconds. */
 export const SLIDE_INTERVAL_MS = 4000;
 

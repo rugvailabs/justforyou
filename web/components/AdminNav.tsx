@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { cn } from "@/lib/cn";
+
 /**
  * Navigation across the admin surfaces.
  *
@@ -10,32 +12,42 @@ import Link from "next/link";
  * anything in it.
  */
 
-type AdminSection = "overview" | "listings" | "reviews" | "verifications";
+type AdminSection =
+  | "overview"
+  | "listings"
+  | "verifications"
+  | "reviews"
+  | "leads";
 
 const TABS: { key: AdminSection; href: string; label: string }[] = [
   { key: "overview", href: "/admin", label: "Overview" },
   { key: "listings", href: "/admin/listings", label: "Listings" },
   { key: "verifications", href: "/admin/verifications", label: "Verifications" },
   { key: "reviews", href: "/admin/reviews", label: "Reviews" },
+  { key: "leads", href: "/admin/leads", label: "Leads" },
 ];
 
 export default function AdminNav({
   current,
   pendingListings,
   pendingVerifications,
+  className,
 }: {
   current: AdminSection;
   /** Omitted when the count could not be loaded - no badge is better than a wrong one. */
   pendingListings?: number;
   pendingVerifications?: number;
+  className?: string;
 }): JSX.Element {
   const counts: Partial<Record<AdminSection, number | undefined>> = {
     listings: pendingListings,
     verifications: pendingVerifications,
   };
 
+  // mb-5 stays the default so the five pages that call this with no props
+    // keep the spacing they were built against; a caller can override it.
   return (
-    <nav className="mb-5 flex flex-wrap gap-2" aria-label="Admin sections">
+    <nav className={cn("mb-5 flex flex-wrap gap-2", className)} aria-label="Admin sections">
       {TABS.map((tab) => {
         const selected = tab.key === current;
         const count = counts[tab.key];
@@ -44,18 +56,23 @@ export default function AdminNav({
             key={tab.key}
             href={tab.href}
             aria-current={selected ? "page" : undefined}
-            className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+            className={cn(
+              "inline-flex items-center gap-2 rounded-input px-3 py-1.5 text-body font-medium",
+              "transition-colors focus-visible:outline focus-visible:outline-2",
+              "focus-visible:outline-offset-2 focus-visible:outline-ring",
               selected
-                ? "bg-slate-900 text-white"
-                : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-            }`}
+                ? "bg-brand-700 text-ink-inverse"
+                : "border border-line-strong bg-surface text-ink hover:bg-surface-muted",
+            )}
           >
             {tab.label}
             {count !== undefined && count > 0 ? (
               <span
-                className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold ${
-                  selected ? "bg-white text-slate-900" : "bg-amber-100 text-amber-800"
-                }`}
+                className={cn(
+                  "inline-flex min-w-5 items-center justify-center rounded-pill px-1.5",
+                  "text-micro tabular",
+                  selected ? "bg-surface text-brand-800" : "bg-warning-bg text-warning",
+                )}
               >
                 {count}
               </span>

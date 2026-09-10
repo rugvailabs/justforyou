@@ -20,6 +20,7 @@ import Link from "next/link";
 import { BadgeCheck, ArrowRight, Star } from "lucide-react";
 
 import HeroBanner from "@/components/HeroBanner/HeroBanner";
+import TravelTiles from "@/components/HeroBanner/TravelTiles";
 import HeroSearch from "@/components/ds/HeroSearch";
 import ListingCard from "@/components/ds/ListingCard";
 import SiteFooter from "@/components/ds/SiteFooter";
@@ -117,6 +118,9 @@ export default async function HomePage(): Promise<JSX.Element> {
 
         {/* --------------------------------------------------- hero banner */}
         <HeroBanner />
+
+        {/* -------------------------------------------------- travel tiles */}
+        <TravelTiles />
 
         {/* ------------------------------------------------------ trust strip */}
         {listingTotal > 0 ? (

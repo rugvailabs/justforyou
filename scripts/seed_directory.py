@@ -40,6 +40,11 @@ CATEGORIES: List[Tuple[str, str, str, int, str]] = [
     ("movers", "Movers & Storage", "📦", 80, "Local and long-distance moving, packing and storage."),
     ("it-support", "IT Support", "💻", 90, "Managed IT, repairs and small-business networking."),
     ("legal", "Legal Services", "⚖️", 100, "Family, immigration, real estate and small-claims law."),
+    # Travel-adjacent, and both are businesses a directory lists rather than
+    # products it sells. Flights, buses and trains are ticketing, which is a
+    # different product entirely - see the homepage tiles.
+    ("hotels", "Hotels & Stays", "🏨", 110, "Hotels, inns and short-stay accommodation."),
+    ("car-rentals", "Car Rentals", "🚗", 120, "Daily and weekly car, van and truck hire."),
 ]
 
 # Opening hours, by category.
@@ -111,6 +116,17 @@ HOURS_BY_CATEGORY: dict[str, dict[str, list[list[str]]]] = {
         "wed": [["09:00", "17:00"]], "thu": [["09:00", "17:00"]],
         "fri": [["09:00", "16:00"]], "sat": [], "sun": [],
     },
+    # A front desk that never closes: 00:00-23:59 rather than a range that
+    # crosses midnight, because "open 24 hours" is not the same shape as
+    # "closes at 2am" and getOpenState treats them differently.
+    "hotels": {day: [["00:00", "23:59"]] for day in
+               ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]},
+    "car-rentals": {
+        "mon": [["07:30", "18:00"]], "tue": [["07:30", "18:00"]],
+        "wed": [["07:30", "18:00"]], "thu": [["07:30", "18:00"]],
+        "fri": [["07:30", "19:00"]], "sat": [["08:00", "17:00"]],
+        "sun": [["09:00", "15:00"]],
+    },
 }
 
 # (slug, name, category_slug, city, address, postal, lat, lng, phone, website,
@@ -171,6 +187,17 @@ BUSINESSES = [
     ("howe-street-legal-partners", "Howe Street Legal Partners", "legal", "Vancouver", "700 W Georgia St", "V7Y 1K8", 49.2830, -123.1180, "+1-604-555-0191", "https://example.com/howe-street-legal", 4.5, 143, True, "Real estate closings, wills and small-business law."),
     ("pender-immigration-law", "Pender Immigration Law", "legal", "Vancouver", "543 W Pender St", "V6B 1V4", 49.2830, -123.1120, "+1-604-555-0192", None, 4.1, 88, True, "Express Entry, sponsorship and study permits."),
     ("new-west-family-law-office", "New West Family Law Office", "legal", "New Westminster", "620 Sixth St", "V3L 3C1", 49.2057, -122.9110, "+1-604-555-0193", None, None, 0, False, "Separation agreements and custody matters."),
+    # --- hotels ------------------------------------------------------------
+    ("coal-harbour-harbourview-hotel", "Harbourview Hotel Coal Harbour", "hotels", "Vancouver", "1180 W Hastings St", "V6E 4R5", 49.2884, -123.1230, "+1-604-555-0201", "https://example.com/harbourview-hotel", 4.4, 318, True, "Waterfront rooms a short walk from the convention centre and the seawall."),
+    ("gastown-brick-and-beam-inn", "Brick & Beam Inn", "hotels", "Vancouver", "310 Water St", "V6B 1B6", 49.2841, -123.1075, "+1-604-555-0202", None, 4.2, 174, True, "Converted heritage warehouse with 28 rooms in the middle of Gastown."),
+    ("mount-pleasant-yard-hotel", "The Yard Hotel", "hotels", "Vancouver", "2255 Main St", "V5T 3C7", 49.2635, -123.1005, "+1-604-555-0203", "https://example.com/yard-hotel", 4.0, 96, True, "Small independent hotel on Main, with parking and long-stay rates."),
+    ("richmond-airport-transit-suites", "Airport Transit Suites", "hotels", "Richmond", "9800 Bridgeport Rd", "V6X 1S3", 49.1935, -123.1180, "+1-604-555-0204", None, 3.9, 241, False, "Shuttle to YVR every twenty minutes, twenty-four hours."),
+
+    # --- car rentals -------------------------------------------------------
+    ("downtown-westcoast-car-hire", "West Coast Car Hire", "car-rentals", "Vancouver", "1055 Alberni St", "V6E 1A1", 49.2856, -123.1245, "+1-604-555-0211", "https://example.com/westcoast-car-hire", 4.5, 262, True, "Compacts through to seven-seaters, with winter tyres from November."),
+    ("mount-pleasant-broadway-van-rental", "Broadway Van Rental", "car-rentals", "Vancouver", "180 W Broadway", "V5Y 1P4", 49.2632, -123.1085, "+1-604-555-0212", None, 4.3, 118, True, "Cargo vans and small trucks by the day, for moves and deliveries."),
+    ("richmond-yvr-rentals", "YVR Rentals Richmond", "car-rentals", "Richmond", "5911 Minoru Blvd", "V6X 4C7", 49.1690, -123.1370, "+1-604-555-0213", "https://example.com/yvr-rentals", 4.1, 189, True, "Airport pickup and one-way hire across the Lower Mainland."),
+    ("north-shore-mountain-auto-hire", "Mountain Auto Hire", "car-rentals", "North Vancouver", "1405 Marine Dr", "V7P 1T4", 49.3240, -123.0885, "+1-604-555-0214", None, None, 0, False, "New depot on the North Shore, opening with ten vehicles."),
 ]
 
 
@@ -235,13 +262,44 @@ def seed_businesses(db: Session) -> Tuple[int, int]:
                 is_active=True,
                 description=description,
                 opening_hours=HOURS_BY_CATEGORY.get(category_slug),
+                # The fixture exists to produce a directory somebody can
+                # browse. Leaving these pending - the model default - is
+                # why a freshly seeded category reported zero listings:
+                # visibility needs approved AND verified, and
+                # seed_verifications only verifies what is already
+                # approved. The pending listings that demo the owner
+                # dashboard are seeded in seed_ownership instead.
+                status=BusinessStatus.approved,
             )
         )
         created += 1
 
     db.flush()
     backfill_hours(db, by_slug)
+    backfill_fixture_status(db)
     return created, len(BUSINESSES)
+
+
+def backfill_fixture_status(db: Session) -> int:
+    """Approve fixture listings left pending by an earlier run.
+
+    Only rows in BUSINESSES, and only ones no moderator has touched
+    (moderated_at IS NULL), so a listing somebody deliberately rejected or
+    suspended is never quietly re-approved by re-running the seed.
+    """
+    slugs = [row[0] for row in BUSINESSES]
+    changed = 0
+    for business in db.scalars(
+        select(Business).where(
+            Business.slug.in_(slugs),
+            Business.status == BusinessStatus.pending,
+            Business.moderated_at.is_(None),
+        )
+    ).all():
+        business.status = BusinessStatus.approved
+        changed += 1
+    db.flush()
+    return changed
 
 
 def backfill_hours(db: Session, by_slug: dict) -> int:
@@ -577,7 +635,7 @@ def seed_plans(db: Session) -> Tuple[int, int]:
     return created, len(SEED_PLANS)
 
 
-def seed_verifications(db: Session) -> Tuple[int, int]:
+def seed_verifications(db: Session) -> Tuple[int, int, int]:
     """Mark the seeded catalogue as KYC-verified.
 
     Necessary, not decorative: search now requires a verified record, so
@@ -591,6 +649,7 @@ def seed_verifications(db: Session) -> Tuple[int, int]:
     """
     businesses = list(db.scalars(select(Business)).all())
     created = 0
+    promoted = 0
 
     for business in businesses:
         existing = db.scalar(
@@ -599,6 +658,19 @@ def seed_verifications(db: Session) -> Tuple[int, int]:
             )
         )
         if existing is not None:
+            # An earlier run may have written this while the listing was still
+            # pending; if the listing has since been approved by the fixture,
+            # its KYC has to follow or the listing stays invisible - approved
+            # but unverified is exactly the state search excludes.
+            if (
+                business.status is BusinessStatus.approved
+                and existing.status is VerificationStatus.pending
+                and existing.reviewed_at is None
+            ):
+                existing.status = VerificationStatus.verified
+                existing.reviewed_at = datetime.now(timezone.utc)
+                business.verified = True
+                promoted += 1
             continue
 
         is_approved = business.status is BusinessStatus.approved
@@ -622,4 +694,4 @@ def seed_verifications(db: Session) -> Tuple[int, int]:
         created += 1
 
     db.flush()
-    return created, len(businesses)
+    return created, promoted, len(businesses)

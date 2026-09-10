@@ -225,7 +225,11 @@ def main() -> int:
         enquiries_created, enquiries_total = seed_enquiries(db)
         # Verification last of the directory work: it reads every listing's
         # status, including the pending one seed_ownership just created.
-        verifications_created, verifications_total = seed_verifications(db)
+        (
+            verifications_created,
+            verifications_promoted,
+            verifications_total,
+        ) = seed_verifications(db)
         plans_created, plans_total = seed_plans(db)
         db.commit()
         # commit() expires attributes and close() detaches the instances, so
@@ -298,6 +302,7 @@ def main() -> int:
     )
     print(
         f"  KYC      : {verifications_created} verification records created, "
+        f"{verifications_promoted} promoted to verified, "
         f"{verifications_total} listings total"
     )
     print("             approved listings are marked verified so search sees them")

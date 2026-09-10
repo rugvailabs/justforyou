@@ -203,6 +203,28 @@ class EnquiryOut(BaseModel):
     created_at: datetime
 
 
+class AdminEnquiryOut(EnquiryOut):
+    """A lead as a moderator sees it: the same row plus who it was for.
+
+    The business name and slug are joined in because a global inbox listing
+    fifty leads by business_id is unreadable, and making the client resolve
+    fifty ids is fifty requests.
+    """
+
+    business_name: str
+    business_slug: str
+
+
+class AdminEnquiryPage(BaseModel):
+    """One page of the global inbox, with the total for the pager."""
+
+    items: list[AdminEnquiryOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class EnquiryAck(BaseModel):
     """Deliberately thin: the public endpoint confirms receipt and nothing more.
 

@@ -472,6 +472,21 @@ export interface SupportMessageAccepted {
 
 /* --------------------------------------------------------------- admin */
 
+/** A lead as the global admin inbox returns it - the row plus its listing. */
+export interface AdminEnquiry extends EnquiryOut {
+  business_name: string;
+  business_slug: string;
+}
+
+/** GET /admin/enquiries */
+export interface AdminEnquiryPage {
+  items: AdminEnquiry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 export interface AdminStats {
   total_businesses: number;
   pending_listings: number;

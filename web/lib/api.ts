@@ -44,6 +44,7 @@ import type {
   PresignResponse,
   ProfileUpdate,
   LoginRequest,
+  AdminEnquiryPage,
   SearchResponse,
   SupportMessageAccepted,
   SupportMessageCreate,
@@ -626,6 +627,30 @@ export function getProfile(): Promise<UserResponse> {
  */
 export function updateProfile(payload: ProfileUpdate): Promise<UserResponse> {
   return apiFetch<UserResponse>("/profile", { method: "PATCH", body: payload });
+}
+
+/**
+ * GET /admin/enquiries - every lead in the directory. Admin only.
+ *
+ * The CSV export is not here: it returns a file, not JSON, so the browser is
+ * pointed at our own route handler and streams it rather than round-tripping
+ * the bytes through this client.
+ */
+export function getAdminEnquiries(options: {
+  enquiry_type?: EnquiryType;
+  business_id?: number;
+  page?: number;
+  page_size?: number;
+} = {}): Promise<AdminEnquiryPage> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== undefined) qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return apiFetch<AdminEnquiryPage>(
+    `/admin/enquiries${suffix ? `?${suffix}` : ""}`,
+    { method: "GET" },
+  );
 }
 
 /* ------------------------------------------------------------- support */
