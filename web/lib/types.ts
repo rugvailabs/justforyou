@@ -448,6 +448,28 @@ export interface ProfileUpdate {
   preferred_contact_method?: PreferredContactMethod;
 }
 
+/* ------------------------------------------------------------- support */
+
+/** Customer care, feedback and bug reports. Goes to us, not to a business. */
+export type SupportKind = "enquiry" | "feedback" | "bug";
+
+export interface SupportMessageCreate {
+  kind: SupportKind;
+  email: string;
+  message: string;
+  name?: string | null;
+  subject?: string | null;
+  /** Bug reports only. */
+  page_url?: string | null;
+  user_agent?: string | null;
+}
+
+/** Deliberately thin - only that it arrived, and a reference to quote. */
+export interface SupportMessageAccepted {
+  id: number;
+  created_at: string;
+}
+
 /* --------------------------------------------------------------- admin */
 
 export interface AdminStats {

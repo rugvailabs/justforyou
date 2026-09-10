@@ -45,6 +45,8 @@ import type {
   ProfileUpdate,
   LoginRequest,
   SearchResponse,
+  SupportMessageAccepted,
+  SupportMessageCreate,
   SignupRequest,
   TokenResponse,
   UserResponse,
@@ -624,6 +626,27 @@ export function getProfile(): Promise<UserResponse> {
  */
 export function updateProfile(payload: ProfileUpdate): Promise<UserResponse> {
   return apiFetch<UserResponse>("/profile", { method: "PATCH", body: payload });
+}
+
+/* ------------------------------------------------------------- support */
+
+/**
+ * POST /support - a question, feedback, or a bug report.
+ *
+ * `token` is optional: an anonymous sender is accepted and simply not
+ * attributed. The backend stores the message before it tries to email it, so
+ * a 201 means it is recorded whether or not the notification went out.
+ */
+export function createSupportMessage(
+  payload: SupportMessageCreate,
+  token?: string,
+): Promise<SupportMessageAccepted> {
+  return apiFetch<SupportMessageAccepted>("/support", {
+    method: "POST",
+    body: payload,
+    auth: false,
+    token,
+  });
 }
 
 /* -------------------------------------------------------- chat realtime */

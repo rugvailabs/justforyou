@@ -21,6 +21,7 @@ from app.models.message_sent import (
 )
 from app.models.provider import Provider
 from app.models.review_queue import ReviewDecision, ReviewQueue
+from app.models.support import SupportKind, SupportMessage
 from app.models.submission import InputType, Submission, SubmissionStatus
 from app.models.subscription import (
     BillingCycle,
@@ -60,6 +61,8 @@ __all__ = [
     "Provider",
     "ReviewQueue",
     "ReviewDecision",
+    "SupportKind",
+    "SupportMessage",
     "Submission",
     "InputType",
     "SubmissionStatus",

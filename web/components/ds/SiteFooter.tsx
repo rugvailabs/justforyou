@@ -4,6 +4,13 @@
  * Only links to routes that exist. A footer full of dead "About / Careers /
  * Press" links is the fastest way to make a product feel like a template, and
  * every one of them is a 404 somebody has to explain later.
+ *
+ * That rule is why there is no Advertise or Pricing link: /plans has backend
+ * endpoints and two seeded rows but no page, so linking it would be advertising
+ * a route that 404s. It goes in when the page does.
+ *
+ * "Free listing" and "Add your business" are the same flow under the two names
+ * people search for, which is deliberate - not an accident of copy-paste.
  */
 
 import Link from "next/link";
@@ -24,13 +31,31 @@ export default function SiteFooter({
       links: [
         { href: "/search", label: t("footer.browseCategories") },
         { href: "/chat", label: t("common.messages") },
+        { href: "/about", label: t("footer.about") },
       ],
     },
     {
       heading: t("footer.forBusinesses"),
       links: [
         { href: "/dashboard/new-listing", label: t("footer.addListing") },
+        // The same flow as above, under the name people search for.
+        { href: "/dashboard/new-listing", label: t("footer.freeListing") },
         { href: "/dashboard", label: t("footer.ownerSignIn") },
+      ],
+    },
+    {
+      heading: t("footer.support"),
+      links: [
+        { href: "/contact", label: t("footer.contact") },
+        { href: "/contact?kind=feedback", label: t("footer.feedback") },
+        { href: "/contact?kind=bug", label: t("footer.reportBug") },
+      ],
+    },
+    {
+      heading: t("footer.legal"),
+      links: [
+        { href: "/privacy", label: t("footer.privacy") },
+        { href: "/terms", label: t("footer.terms") },
       ],
     },
   ];
@@ -38,7 +63,7 @@ export default function SiteFooter({
   return (
     <footer className="mt-section border-t border-line bg-surface">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <div className="flex flex-wrap gap-10">
+        <div className="flex flex-wrap gap-x-10 gap-y-8">
           <div className="min-w-[16rem] flex-1">
             <p className="text-card-title font-semibold text-ink">
               JustDial <span className="text-brand-700">CA</span>

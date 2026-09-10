@@ -27,7 +27,14 @@ class ReviewDecision(str, enum.Enum):
 
 class ReviewQueue(Base):
     __tablename__ = "review_queue"
-    __table_args__ = (Index("ix_review_queue_submission_id", "submission_id"),)
+    __table_args__ = (
+        Index("ix_review_queue_submission_id", "submission_id"),
+        # Backs the open-queue read (WHERE resolved_at IS NULL). It has
+        # existed in the database since 595f4a670259 but was never declared
+        # here, so every `alembic revision --autogenerate` saw it as removed
+        # and proposed dropping it.
+        Index("ix_review_queue_open", "resolved_at", "id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     submission_id: Mapped[int] = mapped_column(
