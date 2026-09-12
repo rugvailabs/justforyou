@@ -1,8 +1,11 @@
+# Project name pinned so it does not track the directory name.
+name: justforyou
+
 x-app-base: &app-base
   build:
     context: .
     dockerfile: Dockerfile
-  image: justdial-ca-backend:latest
+  image: justforyou-backend:latest
   restart: unless-stopped
   depends_on:
     postgres:
@@ -18,7 +21,7 @@ x-app-base: &app-base
   env_file:
     - .env
   environment:
-    DATABASE_URL: postgresql+psycopg2://justdial:justdial@postgres:5432/justdial_ca
+    DATABASE_URL: postgresql+psycopg2://justforyou:justforyou@postgres:5432/justforyou
     REDIS_URL: redis://redis:6379/0
     ENVIRONMENT: development
     # In-cluster endpoint used for API calls (SDK -> MinIO).
@@ -37,7 +40,7 @@ x-app-base: &app-base
     SMTP_PORT: "1025"
     SMTP_USER: ""
     SMTP_PASSWORD: ""
-    MAIL_FROM: "justdial-ca <no-reply@justdial.ca>"
+    MAIL_FROM: "justforyou <no-reply@justforyou.ca>"
   volumes:
     - .:/app
     # Whisper model weights, downloaded once and shared by backend and workers.
@@ -46,25 +49,25 @@ x-app-base: &app-base
 services:
   postgres:
     image: postgres:16
-    container_name: justdial_ca_postgres
+    container_name: justforyou_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: justdial
-      POSTGRES_PASSWORD: justdial
-      POSTGRES_DB: justdial_ca
+      POSTGRES_USER: justforyou
+      POSTGRES_PASSWORD: justforyou
+      POSTGRES_DB: justforyou
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U justdial -d justdial_ca"]
+      test: ["CMD-SHELL", "pg_isready -U justforyou -d justforyou"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: justdial_ca_redis
+    container_name: justforyou_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -76,7 +79,7 @@ services:
 
   clamav:
     image: clamav/clamav:1.4
-    container_name: justdial_ca_clamav
+    container_name: justforyou_clamav
     restart: unless-stopped
     ports:
       - "3310:3310"
@@ -102,7 +105,7 @@ services:
 
   mailhog:
     image: mailhog/mailhog
-    container_name: justdial_ca_mailhog
+    container_name: justforyou_mailhog
     restart: unless-stopped
     ports:
       - "1025:1025"   # SMTP sink
@@ -115,7 +118,7 @@ services:
 
   minio:
     image: minio/minio
-    container_name: justdial_ca_minio
+    container_name: justforyou_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -137,13 +140,13 @@ services:
 
   backend:
     <<: *app-base
-    container_name: justdial_ca_backend
+    container_name: justforyou_backend
     ports:
       - "8000:8000"
 
   celery_worker:
     <<: *app-base
-    container_name: justdial_ca_celery_worker
+    container_name: justforyou_celery_worker
     # concurrency is capped deliberately: each prefork child loads its own
     # copy of the Whisper weights, so an unbounded default would multiply
     # model memory by the host's CPU count.
@@ -151,7 +154,7 @@ services:
 
   celery_beat:
     <<: *app-base
-    container_name: justdial_ca_celery_beat
+    container_name: justforyou_celery_beat
     # --schedule points at /tmp so the shelve file is not written into the
     # bind-mounted project directory. No periodic tasks are registered yet.
     command: >
@@ -160,6 +163,10 @@ services:
 
 volumes:
   postgres_data:
+    name: justdial-ca_postgres_data
   minio_data:
+    name: justdial-ca_minio_data
   clamav_data:
+    name: justdial-ca_clamav_data
   whisper_models:
+    name: justdial-ca_whisper_models

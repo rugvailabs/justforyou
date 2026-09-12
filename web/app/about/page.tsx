@@ -14,7 +14,7 @@ import Prose from "@/components/ds/Prose";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "What JustDial CA is, how listings get in, and what the verified badge means.",
+    "What justforyou is, how listings get in, and what the verified badge means.",
 };
 
 export default function AboutPage(): JSX.Element {
@@ -25,7 +25,7 @@ export default function AboutPage(): JSX.Element {
       updated="2026-09-10"
     >
       <p>
-        JustDial CA lists local businesses so somebody looking for a plumber at
+        justforyou lists local businesses so somebody looking for a plumber at
         nine on a Sunday evening can find one, see whether they are open, and
         get through to them. That is the whole product. The listing is not the
         end of the journey - the phone call is.

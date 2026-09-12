@@ -1,4 +1,4 @@
-# justdial-ca
+# justforyou
 
 FastAPI backend skeleton (Phase 1.1 — no business logic yet).
 

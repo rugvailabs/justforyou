@@ -38,7 +38,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="justdial-ca", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="justforyou", version="0.1.0", lifespan=lifespan)
 
 @app.middleware("http")
 async def reject_oversized_uploads(request: Request, call_next):

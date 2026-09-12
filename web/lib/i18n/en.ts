@@ -11,7 +11,7 @@
 
 export const en = {
   common: {
-    brand: "JustDial CA",
+    brand: "justforyou",
     tagline: "Find local businesses across Canada",
     search: "Search",
     searchPlaceholderWhat: "Plumbers, dentists, restaurants…",

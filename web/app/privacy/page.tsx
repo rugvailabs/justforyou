@@ -20,7 +20,7 @@ import { Alert } from "@/components/ds/feedback";
 export const metadata: Metadata = {
   title: "Privacy policy",
   description:
-    "What JustDial CA collects, why, how long it is kept, and how to get it deleted.",
+    "What justforyou collects, why, how long it is kept, and how to get it deleted.",
 };
 
 export default function PrivacyPage(): JSX.Element {

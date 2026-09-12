@@ -1,4 +1,4 @@
-"""Idempotent development seed data for justdial-ca.
+"""Idempotent development seed data for justforyou.
 
 Run from the project root (or inside the backend container):
 

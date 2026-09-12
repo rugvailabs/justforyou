@@ -19,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "JustDial CA",
+  title: "justforyou",
   description: "Find local businesses across Canada.",
 };
 

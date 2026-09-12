@@ -40,7 +40,7 @@ function Wordmark(): JSX.Element {
         />
       </svg>
       <span className="text-card-title font-semibold tracking-tight text-ink">
-        JustDial <span className="text-brand-700">CA</span>
+        justfor<span className="text-brand-700">you</span>
       </span>
     </span>
   );

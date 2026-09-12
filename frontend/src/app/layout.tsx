@@ -6,7 +6,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "justdial-ca",
+  title: "justforyou",
   description: "Describe your problem in a short video and we will find you help.",
 };
 

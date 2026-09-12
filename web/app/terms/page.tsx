@@ -15,7 +15,7 @@ import { Alert } from "@/components/ds/feedback";
 
 export const metadata: Metadata = {
   title: "Terms of use",
-  description: "The rules for using JustDial CA, for visitors and for business owners.",
+  description: "The rules for using justforyou, for visitors and for business owners.",
 };
 
 export default function TermsPage(): JSX.Element {

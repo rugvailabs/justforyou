@@ -66,7 +66,7 @@ export default function SiteFooter({
         <div className="flex flex-wrap gap-x-10 gap-y-8">
           <div className="min-w-[16rem] flex-1">
             <p className="text-card-title font-semibold text-ink">
-              JustDial <span className="text-brand-700">CA</span>
+              justfor<span className="text-brand-700">you</span>
             </p>
             <p className="mt-1 max-w-sm text-meta text-ink-subtle">
               {t("common.tagline")}
@@ -94,7 +94,7 @@ export default function SiteFooter({
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-6 text-meta text-ink-subtle">
           <p>
-            &copy; {year} JustDial CA. {t("footer.rights")}
+            &copy; {year} justforyou. {t("footer.rights")}
           </p>
           <p>{t("footer.madeIn")}</p>
         </div>

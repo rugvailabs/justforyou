@@ -68,7 +68,7 @@ function HomeNavigator(): React.JSX.Element {
       <HomeStack.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: "JustDial CA" }}
+        options={{ title: "justforyou" }}
       />
       <HomeStack.Screen
         name="Business"

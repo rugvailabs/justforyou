@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     smtp_user: str
     smtp_password: str
     #: Envelope sender for outbound mail.
-    mail_from: str = "justdial-ca <no-reply@justdial.ca>"
+    mail_from: str = "justforyou <no-reply@justforyou.ca>"
     #: Where /support messages land. Reply-To is set to the sender, so a
     #: reply from this inbox reaches the person who wrote in.
-    support_email: str = "support@justdial.ca"
+    support_email: str = "support@justforyou.ca"
     #: Dev SMTP sinks (Mailhog) accept plaintext on a non-standard port and
     #: have no credentials; production SMTP will need both flipped on.
     smtp_use_tls: bool = False
