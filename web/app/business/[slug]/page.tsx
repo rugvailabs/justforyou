@@ -33,7 +33,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Globe, MapPin, MessageSquare } from "lucide-react";
+import { Globe, MapPin } from "lucide-react";
 
 import BusinessHours from "@/components/ds/BusinessHours";
 import EnquiryPanel from "@/components/ds/EnquiryPanel";
@@ -200,13 +200,6 @@ export default async function BusinessPage({
           ) : (
             <span className="text-meta text-ink-subtle">{t("business.noPhone")}</span>
           )}
-
-          <Button asChild variant="secondary">
-            <Link href={`/chat/new?business=${business.id}`}>
-              <MessageSquare aria-hidden="true" />
-              {t("business.startChat")}
-            </Link>
-          </Button>
 
           {business.website !== null ? (
             <Button asChild variant="secondary">

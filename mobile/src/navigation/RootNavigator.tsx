@@ -1,5 +1,5 @@
 /**
- * Four tabs, five for an owner, each with its own stack.
+ * Three tabs, four for an owner, each with its own stack.
  *
  * The Business tab is mounted only when /me says role is business_owner. Two
  * reasons it is conditional rather than always-there-and-empty: a tab that
@@ -16,8 +16,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import AccountScreen from "../screens/AccountScreen";
 import BusinessScreen from "../screens/BusinessScreen";
-import ChatListScreen from "../screens/ChatListScreen";
-import ChatThreadScreen from "../screens/ChatThreadScreen";
 import HomeScreen from "../screens/HomeScreen";
 import LeadsScreen from "../screens/LeadsScreen";
 import ListingsScreen from "../screens/ListingsScreen";
@@ -27,7 +25,6 @@ import { useSession } from "../lib/session";
 import { color, type } from "../theme";
 import type {
   AccountStackParamList,
-  ChatStackParamList,
   HomeStackParamList,
   OwnerStackParamList,
   RootTabParamList,
@@ -95,25 +92,6 @@ function SearchNavigator(): React.JSX.Element {
         options={({ route }) => ({ title: route.params.name ?? "Listing" })}
       />
     </SearchStack.Navigator>
-  );
-}
-
-const ChatStack = createNativeStackNavigator<ChatStackParamList>();
-
-function ChatNavigator(): React.JSX.Element {
-  return (
-    <ChatStack.Navigator screenOptions={screenOptions}>
-      <ChatStack.Screen
-        name="Conversations"
-        component={ChatListScreen}
-        options={{ title: "Messages" }}
-      />
-      <ChatStack.Screen
-        name="Thread"
-        component={ChatThreadScreen}
-        options={({ route }) => ({ title: route.params.title })}
-      />
-    </ChatStack.Navigator>
   );
 }
 
@@ -195,14 +173,6 @@ export default function RootNavigator(): React.JSX.Element {
           options={{
             title: "Search",
             tabBarIcon: ({ focused }) => <TabIcon glyph="🔍" focused={focused} />,
-          }}
-        />
-        <Tabs.Screen
-          name="ChatTab"
-          component={ChatNavigator}
-          options={{
-            title: "Chat",
-            tabBarIcon: ({ focused }) => <TabIcon glyph="💬" focused={focused} />,
           }}
         />
         {isOwner ? (

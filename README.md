@@ -16,14 +16,19 @@ voice-intake pipeline that shares the same backend.
 One FastAPI backend serves **two products**:
 
 **1. The directory** (the active work). Listings and a 12-category taxonomy,
-full-text and location search, reviews with owner replies, enquiry leads,
-real-time chat over WebSocket, KYC document verification, subscription plans,
-and an admin moderation console.
+full-text and location search, reviews with owner replies, enquiry leads, KYC
+document verification, subscription plans, and an admin moderation console.
 
 **2. A voice-intake pipeline** (the original build). Record or type a problem →
 transcribe → extract structured fields → match a provider → human review. Lives
 under the `submissions`, `consents` and `review` routes. The test suite covers
 this half.
+
+Buyer-to-business chat is **disabled**. The API still implements it — routes,
+models, WebSocket handler and the `conversations` / `messages` tables are all
+intact — but no client exposes it, so there is no way in from the web or mobile
+app. Removing the UI is reverted by restoring the deleted files under
+`web/app/chat/`; the helper functions they called are still in `web/lib/api.ts`.
 
 ### Clients
 

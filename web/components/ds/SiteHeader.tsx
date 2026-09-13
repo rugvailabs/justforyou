@@ -134,9 +134,6 @@ export default async function SiteHeader({
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                <Link href="/chat">{t("common.messages")}</Link>
-              </Button>
               {isOwner ? (
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/dashboard">{t("common.dashboard")}</Link>

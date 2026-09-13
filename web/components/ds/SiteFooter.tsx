@@ -30,7 +30,6 @@ export default function SiteFooter({
       heading: t("footer.forCustomers"),
       links: [
         { href: "/search", label: t("footer.browseCategories") },
-        { href: "/chat", label: t("common.messages") },
         { href: "/about", label: t("footer.about") },
       ],
     },
