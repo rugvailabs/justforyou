@@ -1,0 +1,30 @@
+# Directory-only API image for small hosts (Render's free tier and similar).
+#
+# Differs from ./Dockerfile, which is the local development image, in three
+# ways: no faster-whisper or ffmpeg (the voice pipeline is switched off with
+# VOICE_PIPELINE_ENABLED=false), no build toolchain (every dependency ships a
+# wheel), and it runs as an unprivileged user. It applies migrations on start
+# and listens on $PORT, which the host provides.
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    VOICE_PIPELINE_ENABLED=false
+
+WORKDIR /app
+
+COPY requirements-deploy.txt .
+RUN pip install --upgrade pip && pip install -r requirements-deploy.txt
+
+COPY alembic.ini .
+COPY alembic ./alembic
+COPY app ./app
+COPY scripts ./scripts
+
+RUN useradd --create-home --uid 10001 api && chmod +x scripts/start-api.sh
+USER api
+
+EXPOSE 8000
+
+CMD ["scripts/start-api.sh"]

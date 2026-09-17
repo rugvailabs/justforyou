@@ -51,8 +51,6 @@ _DOCUMENT_EXTENSIONS: dict[str, str] = {
 # Server-side encryption applied to the whole bucket. See ensure_bucket().
 _SSE_ALGORITHM = "AES256"
 
-# MinIO ignores regions, but boto3 requires one to sign requests.
-_SIGNING_REGION = "us-east-1"
 
 
 class StorageError(RuntimeError):
@@ -66,7 +64,8 @@ def _build_client(endpoint: str) -> S3Client:
         endpoint_url=endpoint,
         aws_access_key_id=settings.minio_access_key,
         aws_secret_access_key=settings.minio_secret_key,
-        region_name=_SIGNING_REGION,
+        # MinIO ignores it, but boto3 must sign for one; B2 needs the real one.
+        region_name=settings.storage_region,
         # Path-style addressing: MinIO does not do virtual-host buckets, and
         # neither does a bucket name that is not DNS-safe.
         config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),

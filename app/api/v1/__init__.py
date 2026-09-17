@@ -13,17 +13,15 @@ from app.api.v1 import (
     businesses_owner,
     chat,
     categories,
-    consents,
     enquiries,
     payments,
     profile,
     registration,
-    review,
     search,
-    submissions,
     support,
     verification,
 )
+from app.core.config import get_settings
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(admin_businesses.router)
@@ -37,14 +35,21 @@ api_router.include_router(enquiries.router)
 api_router.include_router(business_reviews.router)
 api_router.include_router(categories.router)
 api_router.include_router(chat.router)
-api_router.include_router(consents.router)
 api_router.include_router(payments.router)
 api_router.include_router(profile.router)
 api_router.include_router(registration.router)
-api_router.include_router(review.router)
 api_router.include_router(search.router)
-api_router.include_router(submissions.router)
 api_router.include_router(support.router)
 api_router.include_router(verification.router)
+
+# The legacy voice-submission app. Imported only when enabled: its modules pull
+# in the Celery app and the ClamAV client, which a directory-only deployment
+# neither installs services for nor needs. See Settings.voice_pipeline_enabled.
+if get_settings().voice_pipeline_enabled:
+    from app.api.v1 import consents, review, submissions
+
+    api_router.include_router(consents.router)
+    api_router.include_router(review.router)
+    api_router.include_router(submissions.router)
 
 __all__ = ["api_router"]

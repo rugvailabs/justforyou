@@ -14,13 +14,17 @@ class Settings(BaseSettings):
     )
 
     database_url: str
-    redis_url: str
+    #: Celery's broker. Only the voice pipeline uses it, so a directory-only
+    #: deployment (VOICE_PIPELINE_ENABLED=false) needs no Redis at all.
+    redis_url: str = "redis://redis:6379/0"
     secret_key: str
-    anthropic_api_key: str
+    #: Voice pipeline only. Blank falls back to the keyword classifier.
+    anthropic_api_key: str = ""
     smtp_host: str
     smtp_port: int
-    smtp_user: str
-    smtp_password: str
+    #: Blank for an SMTP server that takes no login (MailHog locally).
+    smtp_user: str = ""
+    smtp_password: str = ""
     #: Envelope sender for outbound mail.
     mail_from: str = "justforyou <no-reply@justforyou.ca>"
     #: Where /support messages land. Reply-To is set to the sender, so a
@@ -46,11 +50,22 @@ class Settings(BaseSettings):
     minio_public_endpoint: str | None = None
     minio_access_key: str
     minio_secret_key: str
-    minio_bucket_videos: str
+    minio_bucket_videos: str = "justdial-videos"
     #: KYC licence and GST documents. Separate from the video bucket so a
     #: retention rule on one cannot sweep the other, and so the two can end up
     #: in different regions or lifecycle policies later.
     minio_bucket_documents: str = "kyc-documents"
+    #: The region requests are signed for. MinIO and Cloudflare R2 accept
+    #: us-east-1 ("auto" also works on R2); Backblaze B2 needs the region in
+    #: its endpoint, e.g. us-west-004.
+    storage_region: str = "us-east-1"
+
+    #: The legacy voice-submission app: recorded problems transcribed by
+    #: Whisper, virus-scanned by ClamAV and processed by Celery workers. The
+    #: directory does not use any of it. False leaves its routes unmounted and
+    #: skips its startup work, which is what lets the API run on a small host
+    #: with no ClamAV, no workers, no Redis and no Whisper model.
+    voice_pipeline_enabled: bool = True
 
     # Malware scanning (ClamAV daemon).
     clamav_host: str = "clamav"

@@ -1,0 +1,72 @@
+# Render Blueprint for the justforyou API (the FastAPI backend).
+#
+# Directory-only: the legacy voice pipeline (Whisper, ClamAV, Celery) is off, so
+# this needs no workers, no Redis and no ClamAV. The database, object storage and
+# SMTP are external services - see DEPLOY.md for which ones and how to fill in
+# the values marked `sync: false`, which Render asks for when the Blueprint is
+# first applied.
+#
+# The web app is deployed separately on Vercel.
+services:
+  - type: web
+    name: justforyou-api
+    runtime: docker
+    plan: free
+    # Closest free region to a Neon database in AWS us-west-2 (Oregon).
+    region: oregon
+    dockerfilePath: ./Dockerfile.deploy
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- runtime ------------------------------------------------------
+      # Not "production": the test checkout refuses to run in production, and
+      # there is no real payment processor yet.
+      - key: ENVIRONMENT
+        value: staging
+      - key: VOICE_PIPELINE_ENABLED
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+
+      # --- database (Neon) ----------------------------------------------
+      - key: DATABASE_URL
+        sync: false
+
+      # --- object storage (Cloudflare R2 or Backblaze B2) ----------------
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_PUBLIC_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: MINIO_BUCKET_DOCUMENTS
+        value: kyc-documents
+      - key: STORAGE_REGION
+        value: auto
+
+      # --- email (Mailtrap sandbox) -------------------------------------
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "2525"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_USE_TLS
+        value: "true"
+      - key: MAIL_FROM
+        value: "justforyou <no-reply@justforyou.test>"
+      - key: SUPPORT_EMAIL
+        value: support@justforyou.test
+
+      # --- the web app's public address (the Vercel URL) -----------------
+      - key: WEB_BASE_URL
+        sync: false
+      - key: STRIPE_SUCCESS_URL
+        sync: false
+      - key: STRIPE_CANCEL_URL
+        sync: false

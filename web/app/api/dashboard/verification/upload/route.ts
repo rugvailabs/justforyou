@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ApiError, presignDocument } from "@/lib/api";
+import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_MB } from "@/lib/upload-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,9 @@ const ACCEPTED = new Set([
 /**
  * A licence scan is a page, not a video. The backend does not enforce a size -
  * a presigned PUT goes straight to storage - so the limit lives here, where
- * the bytes actually pass through something we control.
+ * the bytes actually pass through something we control. See lib/upload-limits.
  */
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = MAX_DOCUMENT_BYTES;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let form: FormData;
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { detail: "That file is over 10 MB. Please upload a smaller scan." },
+      { detail: `That file is over ${MAX_DOCUMENT_MB} MB. Please upload a smaller scan.` },
       { status: 413 },
     );
   }

@@ -1,0 +1,20 @@
+# Runtime dependencies for a directory-only deployment
+# (VOICE_PIPELINE_ENABLED=false) - see Dockerfile.deploy.
+#
+# requirements.txt includes this file and adds what only the voice pipeline and
+# local development need: its worker queue, virus scanner client, LLM client and
+# faster-whisper (with its model runtime, most of the local image's 3 GB), plus
+# the test tools.
+fastapi
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+pydantic-settings
+python-dotenv
+passlib[bcrypt]
+bcrypt<4.1
+python-jose[cryptography]
+email-validator
+boto3
+python-multipart

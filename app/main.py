@@ -25,9 +25,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+PLACEHOLDER_SECRET_KEY = "change-me-to-a-long-random-string"
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Create the videos bucket if it is missing. Idempotent."""
+    """Refuse an unsafe secret outside development; prepare the videos bucket."""
+    if settings.environment != "development" and settings.secret_key in {
+        "",
+        PLACEHOLDER_SECRET_KEY,
+    }:
+        # Every login token is signed with this. A deployment reachable from
+        # the internet with the example value would let anyone mint tokens.
+        raise RuntimeError(
+            "SECRET_KEY is unset or still the example value. Set a long random "
+            "value before running outside development."
+        )
+    if not settings.voice_pipeline_enabled:
+        # The videos bucket belongs to the voice pipeline; nothing else needs it.
+        yield
+        return
     if not storage.ensure_bucket():
         # Deliberately not fatal: the API should still start so /health works
         # and the operator can see what is wrong. Uploads will fail loudly.

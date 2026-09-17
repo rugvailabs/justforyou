@@ -6,3 +6,9 @@ venv/
 .git/
 .pytest_cache/
 frontend/
+# The web and mobile apps deploy separately and are never part of the API
+# image; without these the build context carries their node_modules.
+web/
+mobile/
+**/node_modules/
+.claude/

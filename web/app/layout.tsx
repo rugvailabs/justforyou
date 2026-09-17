@@ -10,6 +10,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
+import { indexingAllowed } from "@/lib/indexing";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -21,6 +23,8 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "justforyou",
   description: "Find local businesses across Canada.",
+  // Test deployments are kept out of search engines; see lib/indexing.ts.
+  ...(indexingAllowed ? {} : { robots: { index: false, follow: false } }),
 };
 
 export default function RootLayout({

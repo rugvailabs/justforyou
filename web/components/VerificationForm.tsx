@@ -24,6 +24,7 @@ import { Alert } from "@/components/ds/feedback";
 import { Button } from "@/components/ds/primitives";
 import { FIELD, LABEL } from "@/components/ds/form";
 import type { BusinessVerification } from "@/lib/types";
+import { MAX_DOCUMENT_MB } from "@/lib/upload-limits";
 
 type UploadState =
   | { kind: "idle" }
@@ -405,7 +406,7 @@ function DocumentField({
             </button>
           </span>
         ) : (
-          <span className="text-ink-subtle">PDF or image, up to 10 MB.</span>
+          <span className="text-ink-subtle">PDF or image, up to {MAX_DOCUMENT_MB} MB.</span>
         )}
       </div>
     </div>
