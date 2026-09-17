@@ -38,7 +38,7 @@ export default function SiteFooter({
       links: [
         { href: "/dashboard/new-listing", label: t("footer.addListing") },
         // The same flow as above, under the name people search for.
-        { href: "/dashboard/new-listing", label: t("footer.freeListing") },
+        { href: "/register", label: t("footer.freeListing") },
         { href: "/dashboard", label: t("footer.ownerSignIn") },
       ],
     },

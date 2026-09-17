@@ -129,7 +129,7 @@ export default async function SiteHeader({
                 <Link href="/login">{t("common.signIn")}</Link>
               </Button>
               <Button asChild size="sm" className="hidden md:inline-flex">
-                <Link href="/dashboard/new-listing">{t("common.listYourBusiness")}</Link>
+                <Link href="/register">{t("common.listYourBusiness")}</Link>
               </Button>
             </>
           ) : (

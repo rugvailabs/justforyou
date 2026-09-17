@@ -45,3 +45,7 @@ class UserResponse(BaseModel):
     is_admin: bool
     role: UserRole
     created_at: datetime
+    # False only for a business account that has not finished registering.
+    is_active: bool = True
+    # 2-4 while registering (4 = complete); None if the account never did.
+    registration_step: int | None = None

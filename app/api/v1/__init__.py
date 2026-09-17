@@ -17,6 +17,7 @@ from app.api.v1 import (
     enquiries,
     payments,
     profile,
+    registration,
     review,
     submissions,
     support,
@@ -38,6 +39,7 @@ api_router.include_router(chat.router)
 api_router.include_router(consents.router)
 api_router.include_router(payments.router)
 api_router.include_router(profile.router)
+api_router.include_router(registration.router)
 api_router.include_router(review.router)
 api_router.include_router(submissions.router)
 api_router.include_router(support.router)

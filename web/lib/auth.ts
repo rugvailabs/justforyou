@@ -136,6 +136,10 @@ export async function requireBusinessOwner(
   if (user.role !== "business_owner" && user.role !== "admin" && !user.is_admin) {
     redirect(loginUrl(returnTo, true));
   }
+  // A business account that has not finished registering has no listing and
+  // no plan yet; the backend refuses its dashboard calls, so send it back to
+  // finish rather than render a page of errors.
+  if (!user.is_active) redirect("/register");
   return user;
 }
 

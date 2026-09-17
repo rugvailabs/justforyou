@@ -61,7 +61,7 @@ export const HERO_SLIDES: readonly HeroSlide[] = [
     headline: "List your business, free",
     subhead:
       "Add your listing, pass the two checks, and start taking enquiries from the directory.",
-    cta: { label: "Add your business", href: "/dashboard/new-listing" },
+    cta: { label: "Add your business", href: "/register" },
     image: { src: "/hero/slide-3.svg", alt: "" },
   },
 ] as const;

@@ -2,9 +2,18 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
-from sqlalchemy import Boolean, DateTime, Enum, String, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    SmallInteger,
+    String,
+    func,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -82,6 +91,32 @@ class User(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    # --- business registration (see app/api/v1/registration.py) -----------
+    # False only for a business account part-way through registration: it can
+    # sign in to finish, and nothing else (require_business_owner refuses it).
+    # Every other account - customers, admins, owners from before the
+    # registration flow - is active.
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    # The furthest registration step reached: 2 once the details are saved, 3
+    # once a plan is chosen, 4 when complete. NULL for accounts that never went
+    # through registration.
+    registration_step: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    # The plan chosen in step 2, saved the moment "Select" is clicked.
+    selected_plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("plans.id", ondelete="SET NULL"), nullable=True
+    )
+    # Step 1's business details, held here until registration completes and
+    # the listing is created from them - so an abandoned registration never
+    # puts a half-finished business in front of moderators.
+    registration_data: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    registration_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     consents: Mapped[List["Consent"]] = relationship(

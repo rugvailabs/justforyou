@@ -18,7 +18,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -32,6 +32,7 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -67,6 +68,19 @@ class Plan(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The longer copy for the plan's "Learn more" panel.
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # A short label on the plan card ("Best value"). Must be literally true.
+    badge: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Ordered; the first three are the card's highlights. Each item is
+    # {"label": str, "status": "included" | "coming_soon"} - a paid perk that
+    # is not built yet says so, rather than being sold as if it were.
+    features: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    benefits: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Display order on the plans page. Ties fall back to price.
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     billing_cycle: Mapped[BillingCycle] = mapped_column(
         Enum(BillingCycle, name="billing_cycle_enum", native_enum=True),
         nullable=False,

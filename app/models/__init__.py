@@ -19,6 +19,7 @@ from app.models.message_sent import (
     MessageSent,
     MessageStatus,
 )
+from app.models.payment import Payment
 from app.models.provider import Provider
 from app.models.review_queue import ReviewDecision, ReviewQueue
 from app.models.support import SupportKind, SupportMessage
@@ -58,6 +59,7 @@ __all__ = [
     "MessageChannel",
     "MessageSent",
     "MessageStatus",
+    "Payment",
     "Provider",
     "ReviewQueue",
     "ReviewDecision",

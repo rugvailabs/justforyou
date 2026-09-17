@@ -14,14 +14,12 @@ path testable: the reference point used in development is downtown Vancouver at
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import List, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.business import Business, BusinessStatus
-from app.models.subscription import BillingCycle, Plan
 from app.models.verification import BusinessVerification, VerificationStatus
 from app.models.business_review import BusinessReview
 from app.models.category import Category
@@ -597,42 +595,6 @@ def seed_enquiries(db: Session) -> Tuple[int, int]:
 
     db.flush()
     return created, len(SEED_ENQUIRIES)
-
-
-# Two plans, one of each billing cycle, so a client has something real to render
-# and the yearly-discount case is exercised. stripe_price_id is None: these are
-# local rows until somebody opens a Stripe account, which is exactly the state
-# the payment stubs are built for.
-SEED_PLANS = [
-    {
-        "name": "Standard",
-        "description": (
-            "A verified listing with photos, opening hours and unlimited leads."
-        ),
-        "billing_cycle": BillingCycle.monthly,
-        "amount": Decimal("29.00"),
-    },
-    {
-        "name": "Standard (yearly)",
-        "description": "The same plan, billed once a year - two months free.",
-        "billing_cycle": BillingCycle.yearly,
-        "amount": Decimal("290.00"),
-    },
-]
-
-
-def seed_plans(db: Session) -> Tuple[int, int]:
-    """Create the demo plans if absent. Keyed on name, which is what a client
-    shows and what makes two rows the same plan."""
-    created = 0
-    for spec in SEED_PLANS:
-        existing = db.scalar(select(Plan).where(Plan.name == spec["name"]))
-        if existing is not None:
-            continue
-        db.add(Plan(**spec))
-        created += 1
-    db.flush()
-    return created, len(SEED_PLANS)
 
 
 def seed_verifications(db: Session) -> Tuple[int, int, int]:

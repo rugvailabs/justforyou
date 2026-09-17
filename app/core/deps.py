@@ -114,6 +114,14 @@ def require_business_owner(current_user: User = Depends(get_current_user)) -> Us
             status_code=status.HTTP_403_FORBIDDEN,
             detail="A business owner account is required",
         )
+    # Registration activates the account in its last step. Until then the
+    # owner can sign in and finish (app/api/v1/registration.py), but not use
+    # the dashboard - no listing exists yet, and no plan has been paid for.
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Finish registering your business to use the dashboard.",
+        )
     return current_user
 
 

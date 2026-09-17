@@ -17,6 +17,7 @@
  * a constraint and anything can POST there.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -40,7 +41,6 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
-  const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,7 +63,9 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
                 email,
                 password,
                 phone,
-                role: isOwner ? "business_owner" : "customer",
+                // Business accounts are created by /register, alongside the
+                // listing and its plan.
+                role: "customer",
               }
             : { mode, email, password },
         ),
@@ -81,8 +83,16 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
       }
 
       const user = (payload as SessionSuccess | null)?.user;
-      // Land admins on /admin, everyone else on the requested page.
-      const target = next || (user?.is_admin ? "/admin" : "/");
+      // The requested page wins. Otherwise admins land on /admin, and business
+      // owners on /register, which resumes an unfinished registration or - when
+      // it is complete - forwards them to their dashboard.
+      const target =
+        next ||
+        (user?.is_admin
+          ? "/admin"
+          : user?.role === "business_owner"
+            ? "/register?resume=1"
+            : "/");
 
       // refresh() re-runs the Server Components so they see the new cookie.
       router.replace(target);
@@ -198,20 +208,16 @@ export default function LoginForm({ next }: { next: string }): JSX.Element {
       ) : null}
 
       {signup ? (
-        <label className="flex items-start gap-2">
-          <input
-            type="checkbox"
-            checked={isOwner}
-            onChange={(event) => setIsOwner(event.target.checked)}
-            className="mt-1 accent-brand-700"
-          />
-          <span className="text-body text-ink-muted">
-            I want to list a business
-            <span className="block text-meta text-ink-subtle">
-              Gives you access to the owner dashboard.
-            </span>
-          </span>
-        </label>
+        <p className="rounded-input bg-surface-muted px-3 py-2 text-body text-ink-muted">
+          Listing a business?{" "}
+          <Link
+            href="/register"
+            className="font-medium text-brand-700 underline underline-offset-4 hover:text-brand-800"
+          >
+            Register your business
+          </Link>{" "}
+          instead - it sets up your account, listing and plan together.
+        </p>
       ) : null}
 
       {error !== null ? <Alert tone="error">{error}</Alert> : null}

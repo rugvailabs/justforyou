@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     #: have no credentials; production SMTP will need both flipped on.
     smtp_use_tls: bool = False
 
+    #: Public address of the web app, for links in emails.
+    web_base_url: str = "http://localhost:3001"
+    #: GST/HST registration number, printed on receipts. A business charging
+    #: GST/HST must show it on invoices over $30 - set it before taking real
+    #: payments.
+    gst_hst_registration_number: str = ""
+
     # Object storage (MinIO locally; S3 / Canadian-region cloud storage later).
     # `minio_endpoint` is what the SDK talks to. `minio_public_endpoint` is what
     # gets baked into presigned URLs - it must be reachable from the browser,

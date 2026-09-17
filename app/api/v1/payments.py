@@ -15,6 +15,7 @@ app/services/payment_gateway.py.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -30,7 +31,9 @@ from app.models.user import User, UserRole
 from app.schemas.subscription import (
     CheckoutRequest,
     CheckoutSessionOut,
+    PaymentConfigOut,
     PlanOut,
+    StubPaymentRequest,
     SubscriptionOut,
     WebhookAck,
 )
@@ -59,6 +62,23 @@ def _period_end(value: object) -> datetime | None:
     return None
 
 
+def _retire_abandoned_checkouts(db: Session, business_id: int, keep_id: int) -> None:
+    """Cancel the listing's other unfinished checkouts once one plan is active.
+
+    Choosing Standard, going back and choosing Basic leaves an `incomplete`
+    Standard row behind; left alone it would sit there looking payable.
+    """
+    for stale in db.scalars(
+        select(Subscription).where(
+            Subscription.business_id == business_id,
+            Subscription.status == SubscriptionStatus.incomplete,
+            Subscription.id != keep_id,
+        )
+    ):
+        stale.status = SubscriptionStatus.canceled
+        stale.canceled_at = datetime.now(timezone.utc)
+
+
 @router.get("/plans", response_model=list[PlanOut])
 def list_plans(db: Session = Depends(get_db)) -> list[Plan]:
     """The plans on offer. Public: pricing is not a secret.
@@ -70,9 +90,23 @@ def list_plans(db: Session = Depends(get_db)) -> list[Plan]:
         db.scalars(
             select(Plan)
             .where(Plan.is_active.is_(True))
-            .order_by(Plan.amount.asc(), Plan.id.asc())
+            .order_by(Plan.sort_order.asc(), Plan.amount.asc(), Plan.id.asc())
         ).all()
     )
+
+
+@router.get("/payments/config", response_model=PaymentConfigOut)
+def payment_config() -> PaymentConfigOut:
+    """Which way payment is taken, so a client can render the right step.
+
+    Public, like pricing: it reveals only whether a gateway is configured and
+    the publishable key, which exists to be given to browsers.
+    """
+    if payment_gateway.gateway_configured():
+        return PaymentConfigOut(
+            mode="stripe", publishable_key=payment_gateway.publishable_key()
+        )
+    return PaymentConfigOut(mode="stub")
 
 
 @router.post("/subscriptions/checkout", response_model=CheckoutSessionOut)
@@ -131,6 +165,37 @@ def start_checkout(
         )
 
     settings = get_settings()
+
+    # A free plan has nothing to collect, so it never reaches the gateway: the
+    # subscription is active the moment it is chosen.
+    if plan.amount <= Decimal("0"):
+        subscription = Subscription(
+            business_id=business.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.active,
+        )
+        db.add(subscription)
+        db.flush()
+        _retire_abandoned_checkouts(db, business.id, keep_id=subscription.id)
+        db.commit()
+        db.refresh(subscription)
+        log_audit(
+            db,
+            actor=f"user:{current_user.id}",
+            action="subscription.free_plan_activated",
+            target_table="subscriptions",
+            target_id=subscription.id,
+            metadata={"business_id": business.id, "plan_id": plan.id},
+        )
+        return CheckoutSessionOut(
+            checkout_url=payload.success_url or settings.stripe_success_url,
+            session_id=None,
+            subscription_id=subscription.id,
+            status=subscription.status,
+            requires_payment=False,
+            stub=not payment_gateway.gateway_configured(),
+        )
+
     try:
         session = payment_gateway.create_checkout_session(
             business_id=business.id,
@@ -185,6 +250,7 @@ def start_checkout(
         checkout_url=session.url,
         session_id=session.session_id,
         subscription_id=subscription.id,
+        status=subscription.status,
         stub=session.stub,
     )
 
@@ -212,6 +278,101 @@ def get_business_subscription(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="This listing has no subscription.",
         )
+    return subscription
+
+
+@router.post(
+    "/subscriptions/{subscription_id}/stub-payment", response_model=SubscriptionOut
+)
+def pay_with_test_card(
+    subscription_id: int,
+    payload: StubPaymentRequest,
+    current_user: User = Depends(require_business_owner),
+    db: Session = Depends(get_db),
+) -> Subscription:
+    """Pay for an incomplete subscription with a test card. Stub mode only.
+
+    Stands in for the hosted payment page that does not exist until Stripe is
+    configured. The same result a checkout.session.completed webhook would
+    produce: the row goes active with a gateway id and a paid-up-to date.
+
+    402 with a customer-facing message when the card is declined, so the form
+    can show it and let them try again. 409 when there is nothing to pay for -
+    already active, cancelled, or a real gateway is configured and the customer
+    must pay through checkout instead.
+    """
+    subscription = db.scalar(
+        select(Subscription)
+        .options(selectinload(Subscription.plan))
+        .where(Subscription.id == subscription_id)
+    )
+    if subscription is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found"
+        )
+
+    business = db.get(Business, subscription.business_id)
+    is_admin = current_user.is_admin or current_user.role is UserRole.admin
+    if business is None or (business.owner_id != current_user.id and not is_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this subscription",
+        )
+
+    if subscription.status is not SubscriptionStatus.incomplete:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This subscription is {subscription.status.value}; there is nothing to pay.",
+        )
+
+    try:
+        charge = payment_gateway.charge_stub_card(
+            card_number=payload.card_number,
+            exp_month=payload.exp_month,
+            exp_year=payload.exp_year,
+            cvc=payload.cvc,
+            billing_cycle=subscription.plan.billing_cycle.value,
+        )
+    except payment_gateway.PaymentDeclined as exc:
+        digits = "".join(ch for ch in payload.card_number if ch.isdigit())
+        log_audit(
+            db,
+            actor=f"user:{current_user.id}",
+            action="subscription.stub_payment_declined",
+            target_table="subscriptions",
+            target_id=subscription.id,
+            # Never the card number - the last four digits identify which test
+            # card was used, and that is all an audit trail needs.
+            metadata={"last4": digits[-4:], "reason": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc)
+        ) from exc
+    except payment_gateway.PaymentGatewayError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    subscription.status = SubscriptionStatus.active
+    subscription.gateway_subscription_id = charge.gateway_subscription_id
+    subscription.current_period_end = charge.current_period_end
+    _retire_abandoned_checkouts(db, subscription.business_id, keep_id=subscription.id)
+    db.commit()
+    db.refresh(subscription)
+
+    log_audit(
+        db,
+        actor=f"user:{current_user.id}",
+        action="subscription.stub_payment_succeeded",
+        target_table="subscriptions",
+        target_id=subscription.id,
+        metadata={
+            "business_id": subscription.business_id,
+            "plan_id": subscription.plan_id,
+            "brand": charge.brand,
+            "last4": charge.last4,
+            "amount": str(subscription.plan.amount),
+            "currency": subscription.plan.currency,
+        },
+    )
     return subscription
 
 

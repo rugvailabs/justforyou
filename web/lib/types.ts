@@ -80,6 +80,10 @@ export interface UserResponse {
   role: UserRole;
   /** ISO-8601 timestamp. */
   created_at: string;
+  /** False only for a business account that has not finished registering. */
+  is_active: boolean;
+  /** 2-4 while registering (4 = complete); null if the account never did. */
+  registration_step: number | null;
 }
 
 /**
@@ -597,3 +601,148 @@ export interface PendingVerificationItem extends BusinessVerification {
   business_status: BusinessStatus;
   owner_email: string | null;
 }
+
+/* ------------------------------------------------ plans and subscriptions */
+
+export type BillingCycle = "monthly" | "yearly";
+
+export type SubscriptionStatus = "incomplete" | "active" | "past_due" | "canceled";
+
+/** A line on a plan card. "coming_soon" is a paid perk that is not built yet. */
+export interface PlanFeature {
+  label: string;
+  status: "included" | "coming_soon";
+}
+
+/** One row of GET /api/v1/plans, in display order. */
+export interface Plan {
+  id: number;
+  name: string;
+  /** One-line summary for the card. */
+  description: string | null;
+  /** Longer copy for the "Learn more" panel. */
+  details: string | null;
+  badge: string | null;
+  /** Most important first; the card shows the first three. */
+  features: PlanFeature[];
+  benefits: string[];
+  sort_order: number;
+  billing_cycle: BillingCycle;
+  /** A decimal string ("29.00"), never a float: it is money. */
+  amount: string;
+  currency: string;
+  is_active: boolean;
+}
+
+/** GET /api/v1/businesses/{id}/subscription */
+export interface Subscription {
+  id: number;
+  business_id: number;
+  plan_id: number;
+  status: SubscriptionStatus;
+  current_period_end: string | null;
+  canceled_at: string | null;
+  created_at: string;
+  plan: Plan;
+}
+
+/* ------------------------------------------------ business registration */
+
+/** Step 1's business half. */
+export interface RegistrationDetails {
+  business_name: string;
+  category_id: number;
+  address: string | null;
+  city: string;
+  /** Two-letter code. Sales tax follows it. */
+  province: string;
+  postal_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** POST /registration/start */
+export interface RegistrationStartRequest extends RegistrationDetails {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+/** PUT /registration/details - email and password are not changed here. */
+export interface RegistrationDetailsUpdate extends RegistrationDetails {
+  name: string;
+  phone: string;
+}
+
+export interface TaxLine {
+  name: string;
+  /** Percent as a decimal string: "13", "9.975". */
+  rate: string;
+  amount: string;
+}
+
+/** Priced server-side; what step 3 shows is what is charged. */
+export interface OrderSummary {
+  plan: Plan;
+  currency: string;
+  subtotal: string;
+  tax_lines: TaxLine[];
+  tax_total: string;
+  total: string;
+  province: string;
+  requires_payment: boolean;
+  /** "1 month" / "12 months"; null for a free plan. */
+  period_label: string | null;
+  /** When the plan would renew if paid now. */
+  renews_on: string | null;
+  /** Provincial taxes listed but not collected yet, e.g. "PST (7%)". */
+  uncollected_taxes: string[];
+}
+
+export interface Receipt {
+  receipt_number: string;
+  created_at: string;
+  currency: string;
+  subtotal: string;
+  tax_lines: TaxLine[];
+  tax_total: string;
+  total: string;
+  province: string;
+  card_brand: string | null;
+  card_last4: string | null;
+  /** "stub" for a test-mode payment, where no money moved. */
+  gateway: string;
+  gst_hst_registration_number: string | null;
+}
+
+/** GET /registration - everything needed to render or resume any step. */
+export interface RegistrationState {
+  /** The furthest step reached, 1-4. */
+  step: number;
+  completed: boolean;
+  account: { name: string; email: string; phone: string | null };
+  details: RegistrationDetails | null;
+  selected_plan: Plan | null;
+  order: OrderSummary | null;
+  business: { id: number; name: string; slug: string; status: BusinessStatus } | null;
+  subscription: Subscription | null;
+  receipt: Receipt | null;
+}
+
+export interface RegistrationStarted {
+  access_token: string;
+  token_type: string;
+  state: RegistrationState;
+}
+
+/** POST /registration/payment - test mode card. */
+export interface RegistrationPaymentRequest {
+  card_number: string;
+  exp_month: number;
+  exp_year: number;
+  cvc: string;
+  cardholder_name?: string | null;
+  accept_terms: boolean;
+}
+

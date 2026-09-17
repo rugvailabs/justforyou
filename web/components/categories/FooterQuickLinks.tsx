@@ -38,7 +38,7 @@ const NEIGHBOURHOODS = [
 ] as const;
 
 const FOR_BUSINESSES: QuickLink[] = [
-  { label: "Free listing", href: "/dashboard/new-listing" },
+  { label: "Free listing", href: "/register" },
   { label: "Business sign-in", href: "/dashboard" },
   { label: "Verified badge", href: "/about" },
 ];

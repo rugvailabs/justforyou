@@ -41,6 +41,12 @@ import type {
   ModerationQueueItem,
   ModerationStats,
   PendingVerificationItem,
+  Plan,
+  RegistrationDetailsUpdate,
+  RegistrationPaymentRequest,
+  RegistrationStarted,
+  RegistrationStartRequest,
+  RegistrationState,
   PresignResponse,
   ProfileUpdate,
   LoginRequest,
@@ -900,3 +906,74 @@ export async function getVerificationDocumentLink(
   }
   return null;
 }
+
+/* --------------------------------------------- plans and registration */
+
+/** GET /plans - the plans on offer, in display order. Public. */
+export function getPlans(): Promise<Plan[]> {
+  return apiFetch<Plan[]>("/plans", { method: "GET", auth: false });
+}
+
+/**
+ * POST /registration/start - step 1 for a new business account.
+ *
+ * Returns a token for the new (inactive) account; the caller sets the session
+ * cookie from it.
+ *
+ * @throws {ApiError} 409 when the email already has an account.
+ */
+export function startRegistration(
+  payload: RegistrationStartRequest,
+): Promise<RegistrationStarted> {
+  return apiFetch<RegistrationStarted>("/registration/start", {
+    method: "POST",
+    body: payload,
+    auth: false,
+  });
+}
+
+/** GET /registration - where the signed-in owner has got to. */
+export function getRegistration(): Promise<RegistrationState> {
+  return apiFetch<RegistrationState>("/registration", { method: "GET" });
+}
+
+/** PUT /registration/details - edit step 1 after going back. */
+export function updateRegistrationDetails(
+  payload: RegistrationDetailsUpdate,
+): Promise<RegistrationState> {
+  return apiFetch<RegistrationState>("/registration/details", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+/** PUT /registration/plan - save the chosen plan (replacing any earlier one). */
+export function chooseRegistrationPlan(planId: number): Promise<RegistrationState> {
+  return apiFetch<RegistrationState>("/registration/plan", {
+    method: "PUT",
+    body: { plan_id: planId },
+  });
+}
+
+/**
+ * POST /registration/payment - pay for the chosen plan and complete.
+ *
+ * @throws {ApiError} 402 with a customer-facing message when declined.
+ */
+export function payForRegistration(
+  payment: RegistrationPaymentRequest,
+): Promise<RegistrationState> {
+  return apiFetch<RegistrationState>("/registration/payment", {
+    method: "POST",
+    body: payment,
+  });
+}
+
+/** POST /registration/complete - complete on a free plan (terms still apply). */
+export function completeFreeRegistration(acceptTerms: boolean): Promise<RegistrationState> {
+  return apiFetch<RegistrationState>("/registration/complete", {
+    method: "POST",
+    body: { accept_terms: acceptTerms },
+  });
+}
+

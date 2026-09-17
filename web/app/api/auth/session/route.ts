@@ -27,13 +27,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ApiError, getMe, login, signup } from "@/lib/api";
-import {
-  ACCESS_TOKEN_COOKIE,
-  ACCESS_TOKEN_MAX_AGE,
-  ROLE_COOKIE,
-} from "@/lib/cookies";
+import { ACCESS_TOKEN_COOKIE, ROLE_COOKIE } from "@/lib/cookies";
 import { isTokenExpired } from "@/lib/jwt";
-import type { PreferredContactMethod, TokenResponse, UserResponse } from "@/lib/types";
+import { setSessionCookies } from "@/lib/session-cookies";
+import type { PreferredContactMethod, TokenResponse } from "@/lib/types";
 
 /** Never cache an auth exchange. */
 export const dynamic = "force-dynamic";
@@ -55,33 +52,6 @@ function bad(detail: string, status = 400): NextResponse {
 
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.trim() !== "";
-}
-
-/**
- * Attach the session cookies to `res`.
- *
- * `secure` is off outside production because local dev is plain http and
- * Safari drops Secure cookies on an insecure origin - which would break the
- * whole flow. Every other hardening flag stays on in both environments.
- */
-function setSessionCookies(
-  res: NextResponse,
-  token: string,
-  user: UserResponse,
-): void {
-  const common = {
-    httpOnly: true as const,
-    sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: ACCESS_TOKEN_MAX_AGE,
-  };
-
-  res.cookies.set(ACCESS_TOKEN_COOKIE, token, common);
-  // Role is cached so middleware can gate /admin without calling the backend.
-  // is_admin still wins: it is the authority for the review console, and a
-  // user can be flagged admin without role having been migrated.
-  res.cookies.set(ROLE_COOKIE, user.is_admin ? "admin" : user.role, common);
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

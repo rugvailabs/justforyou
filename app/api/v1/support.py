@@ -12,10 +12,6 @@ outage is the one failure mode worth designing against here.
 
 from __future__ import annotations
 
-import logging
-import smtplib
-from email.message import EmailMessage
-
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
@@ -25,12 +21,9 @@ from app.core.deps import get_current_user_optional
 from app.models.support import SupportMessage
 from app.models.user import User
 from app.schemas.support import SupportMessageAccepted, SupportMessageCreate
-
-logger = logging.getLogger(__name__)
+from app.services.mailer import send_email
 
 router = APIRouter(prefix="/support", tags=["support"])
-
-SMTP_TIMEOUT_SECONDS = 15
 
 KIND_SUBJECTS = {
     "enquiry": "Customer care enquiry",
@@ -42,15 +35,7 @@ KIND_SUBJECTS = {
 def _notify(record: SupportMessage) -> None:
     """Email the support inbox. Never raises - the row is the record."""
     settings = get_settings()
-
-    message = EmailMessage()
     label = KIND_SUBJECTS.get(record.kind.value, "Support message")
-    message["Subject"] = f"[{label}] {record.subject or f'#{record.id}'}"
-    message["From"] = settings.mail_from
-    message["To"] = settings.support_email
-    # So a reply from the inbox reaches the person who wrote in, rather than
-    # the no-reply envelope sender.
-    message["Reply-To"] = record.email
 
     lines = [
         f"Kind:    {record.kind.value}",
@@ -63,22 +48,18 @@ def _notify(record: SupportMessage) -> None:
     if record.user_agent:
         lines.append(f"Browser: {record.user_agent}")
     lines.extend(["", record.message])
-    message.set_content("\n".join(lines))
 
-    try:
-        with smtplib.SMTP(
-            settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS
-        ) as smtp:
-            if settings.smtp_use_tls:
-                smtp.starttls()
-            if settings.smtp_user:
-                smtp.login(settings.smtp_user, settings.smtp_password)
-            smtp.send_message(message)
-    except Exception:
-        # Logged, not raised: the support message is already persisted, and
-        # telling the sender their bug report failed - when it did not - would
-        # cost us the report on the retry they do not make.
-        logger.exception("Could not email support message %s", record.id)
+    # Failure is logged, not raised: the support message is already persisted,
+    # and telling the sender their bug report failed - when it did not - would
+    # cost us the report on the retry they do not make.
+    send_email(
+        to=settings.support_email,
+        subject=f"[{label}] {record.subject or f'#{record.id}'}",
+        body="\n".join(lines),
+        # So a reply from the inbox reaches the person who wrote in, rather
+        # than the no-reply envelope sender.
+        reply_to=record.email,
+    )
 
 
 @router.post(
