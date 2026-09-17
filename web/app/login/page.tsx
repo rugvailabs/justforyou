@@ -39,6 +39,9 @@ export default function LoginPage({
   const raw = searchParams.next ?? "";
   const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "";
   const forbidden = searchParams.forbidden === "1";
+  // /dashboard is refused to customers; /admin to everyone but staff. They need
+  // different ways out.
+  const forOwners = next === "/dashboard" || next.startsWith("/dashboard/");
 
   const session = getSession();
 
@@ -55,16 +58,33 @@ export default function LoginPage({
 
         <main className="mx-auto max-w-md px-4 py-section sm:px-6">
           <Card className="p-6">
-            <h1 className="text-page-title text-ink">Not authorised</h1>
+            <h1 className="text-page-title text-ink">
+              {forOwners ? "This page is for business accounts" : "Not authorised"}
+            </h1>
             <p className="mt-2 text-body text-ink-muted">
-              Your account does not have access to{" "}
-              <code className="rounded-sm bg-surface-muted px-1 text-ink">
-                {next || "that page"}
-              </code>
-              . Sign in with an administrator account to continue.
+              {forOwners ? (
+                <>
+                  You are signed in with a customer account. Register your business to
+                  turn it into a business account - you keep the same email and
+                  password.
+                </>
+              ) : (
+                <>
+                  Your account does not have access to{" "}
+                  <code className="rounded-sm bg-surface-muted px-1 text-ink">
+                    {next || "that page"}
+                  </code>
+                  . Sign in with an administrator account to continue.
+                </>
+              )}
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-2">
-              <Button asChild>
+              {forOwners ? (
+                <Button asChild>
+                  <Link href="/register">Register your business</Link>
+                </Button>
+              ) : null}
+              <Button asChild variant={forOwners ? "secondary" : "primary"}>
                 <Link href="/">Home</Link>
               </Button>
               <LogoutButton />

@@ -253,7 +253,7 @@ export default async function HomePage(): Promise<JSX.Element> {
               </p>
             </div>
             <Button asChild size="lg">
-              <Link href="/dashboard/new-listing">{t("common.listYourBusiness")}</Link>
+              <Link href="/register">{t("common.listYourBusiness")}</Link>
             </Button>
           </Card>
         </section>

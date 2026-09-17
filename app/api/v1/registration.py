@@ -1,6 +1,7 @@
 """Business registration, in four steps.
 
     1. Details   POST /registration/start      account + business details
+                 POST /registration/convert    a signed-in customer's account instead
                  PUT  /registration/details    (going back to edit them)
     2. Plan      PUT  /registration/plan       saved the moment "Select" is clicked
     3. Payment   POST /registration/payment    paid plans
@@ -448,6 +449,58 @@ def start_registration(
         access_token=create_access_token({"sub": str(user.id)}),
         state=_state(db, user),
     )
+
+
+@router.post("/convert", response_model=RegistrationState)
+def convert_customer_account(
+    payload: RegistrationDetailsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RegistrationState:
+    """Step 1 for someone already signed in as a customer.
+
+    Their account becomes a business account - same email, same password, same
+    reviews and enquiries - and goes through the rest of registration exactly
+    like a new one: inactive for the dashboard until a plan is chosen and the
+    registration completes. Asking them to sign out and open a second account
+    under another email would be the only alternative, and a worse one.
+    """
+    if current_user.is_admin or current_user.role is UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff accounts cannot register a business. Use a separate account.",
+        )
+    if current_user.role is UserRole.business_owner:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This is already a business account.",
+        )
+    _require_category(db, payload.category_id)
+
+    user = db.scalar(
+        select(User)
+        .where(User.id == current_user.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    user.role = UserRole.business_owner
+    user.is_active = False
+    user.registration_step = 2
+    user.registration_data = _details_dict(payload)
+    user.name = payload.name.strip()
+    user.phone = payload.phone.strip()
+    db.commit()
+    db.refresh(user)
+
+    log_audit(
+        db,
+        actor=f"user:{user.id}",
+        action="registration.started",
+        target_table="users",
+        target_id=user.id,
+        metadata={"converted_from": "customer"},
+    )
+    return _state(db, user)
 
 
 @router.get("", response_model=RegistrationState)

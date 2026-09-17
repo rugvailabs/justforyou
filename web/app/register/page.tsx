@@ -12,7 +12,9 @@
  * or the plan, forward again - but never past the furthest one saved, so a
  * hand-typed ?step=3 cannot skip choosing a plan and nothing can skip payment.
  *
- * Customers keep the one-step sign-up on /login. This flow is for businesses.
+ * Customers keep the one-step sign-up on /login. A customer who is already
+ * signed in registers their business on that same account (step 1 converts it)
+ * rather than being asked to sign out and start a second one.
  */
 
 import type { Metadata } from "next";
@@ -75,17 +77,33 @@ export default async function RegisterPage({
     );
   }
 
-  // Signed in with an account that cannot register a business.
+  // A customer registers the business on their own account.
+  if (user.role === "customer" && !user.is_admin) {
+    const categories = await getCategories();
+    return (
+      <Layout current={1} furthest={1} completed={false}>
+        <DetailsStep
+          categories={categories}
+          existing={{
+            account: { name: user.name, email: user.email, phone: user.phone },
+            details: null,
+          }}
+          convert
+        />
+      </Layout>
+    );
+  }
+
+  // Staff accounts do not own businesses.
   if (user.role !== "business_owner") {
     return (
       <Shell>
         <Card className="mx-auto max-w-lg p-6">
           <h1 className="text-page-title text-ink">Business registration</h1>
           <p className="mt-2 text-body text-ink-muted">
-            You are signed in as {user.name} ({user.email}), which is a{" "}
-            {user.is_admin || user.role === "admin" ? "staff" : "customer"} account. A
-            business is registered with its own business account - sign out, then start
-            again here.
+            You are signed in as {user.name} ({user.email}), which is a staff account.
+            A business is registered with its own account - sign out, then start again
+            here.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <LogoutButton />
@@ -102,6 +120,10 @@ export default async function RegisterPage({
 
   if (state.completed) {
     if (searchParams.resume === "1") redirect("/dashboard");
+    // Only the moment of finishing shows the summary (?step=4). Otherwise an
+    // owner who is already registered and clicks "List your business" wants to
+    // add a listing, not to reread their registration.
+    if (searchParams.step !== "4") redirect("/dashboard/new-listing");
     return (
       <Layout current={4} furthest={4} completed>
         <CompleteStep state={state} />

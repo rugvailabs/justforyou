@@ -144,6 +144,12 @@ export default async function SiteHeader({
                   <Link href="/admin">{t("common.admin")}</Link>
                 </Button>
               ) : null}
+              {!isOwner ? (
+                // A customer can turn their account into a business account.
+                <Button asChild size="sm" className="hidden md:inline-flex">
+                  <Link href="/register">{t("common.listYourBusiness")}</Link>
+                </Button>
+              ) : null}
               <span className="hidden max-w-[12ch] truncate text-meta text-ink-subtle md:inline">
                 {user.name}
               </span>

@@ -33,7 +33,7 @@ export default function AboutPage(): JSX.Element {
 
       <h2>How a business gets listed</h2>
       <p>
-        Anyone can <Link href="/dashboard/new-listing">add their business</Link>,
+        Anyone can <Link href="/register">add their business</Link>,
         free. Nothing appears in public search until it has passed two separate
         checks, and both have to clear:
       </p>

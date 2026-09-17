@@ -3,9 +3,11 @@
 /**
  * Step 1: who you are, what the business is, where it is.
  *
- * Two modes. New: creates the account, so it asks for email and password too.
- * Edit: the account exists (the owner came back from a later step, or signed
- * in to resume), so the saved details are filled in and only they change.
+ * Three modes. New: creates the account, so it asks for email and password
+ * too. Convert: a signed-in customer's own account becomes the business
+ * account, so it keeps their email and password. Edit: registration already
+ * started (the owner came back from a later step, or signed in to resume), so
+ * the saved details are filled in and only they change.
  *
  * While nothing has been submitted, what has been typed is kept in this
  * browser (never the password), so closing the tab does not lose it. After the
@@ -99,13 +101,16 @@ function clearDraft(): void {
 export default function DetailsStep({
   categories,
   existing,
+  convert = false,
 }: {
   categories: Category[];
-  /** The saved account and details when editing; null to create an account. */
+  /** The account (and any saved details) when one exists; null to create one. */
   existing: {
     account: { name: string; email: string; phone: string | null };
     details: RegistrationDetails | null;
   } | null;
+  /** The account is a customer's, becoming a business account on submit. */
+  convert?: boolean;
 }): JSX.Element {
   const router = useRouter();
   const editing = existing !== null;
@@ -186,8 +191,8 @@ export default function DetailsStep({
     };
 
     try {
-      const res = await fetch("/api/register", {
-        method: editing ? "PUT" : "POST",
+      const res = await fetch(convert ? "/api/register/convert" : "/api/register", {
+        method: editing && !convert ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           editing ? { ...details, name, phone } : { ...details, name, email, phone, password },
@@ -226,7 +231,12 @@ export default function DetailsStep({
       <Card className="space-y-4 p-5">
         <div>
           <h2 className="text-card-title text-ink">Your account</h2>
-          {editing ? (
+          {convert ? (
+            <p className="mt-0.5 text-meta text-ink-muted">
+              Your account ({existing?.account.email}) becomes your business account.
+              You keep signing in with the same email and password.
+            </p>
+          ) : editing ? (
             <p className="mt-0.5 text-meta text-ink-muted">
               You sign in as {existing?.account.email}.
             </p>

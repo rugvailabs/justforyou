@@ -937,6 +937,19 @@ export function startRegistration(
   });
 }
 
+/**
+ * POST /registration/convert - step 1 for a signed-in customer: their account
+ * becomes a business account (inactive until registration completes).
+ */
+export function convertToBusinessAccount(
+  payload: RegistrationDetailsUpdate,
+): Promise<RegistrationState> {
+  return apiFetch<RegistrationState>("/registration/convert", {
+    method: "POST",
+    body: payload,
+  });
+}
+
 /** GET /registration - where the signed-in owner has got to. */
 export function getRegistration(): Promise<RegistrationState> {
   return apiFetch<RegistrationState>("/registration", { method: "GET" });

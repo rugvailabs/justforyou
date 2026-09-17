@@ -14,6 +14,7 @@ from app.api.v1 import registration as registration_module
 from app.models.business import Business
 from app.models.category import Category
 from app.models.subscription import Plan
+from app.models.user import User
 from app.services import sales_tax
 
 GOOD_CARD = {"card_number": "4242 4242 4242 4242", "exp_month": 12, "exp_year": 99, "cvc": "123"}
@@ -370,3 +371,54 @@ def test_unknown_province_raises():
     with pytest.raises(sales_tax.UnknownProvince):
         sales_tax.calculate(Decimal("29.00"), "XX")
 
+
+# ------------------------------------------------- customers who become owners
+
+
+def _customer(client, email):
+    token = client.post(
+        "/api/v1/signup", json={"name": "Cara", "email": email, "password": "password123"}
+    ).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+CONVERT = {
+    "name": "Cara Customer",
+    "phone": "604 555 0123",
+    "business_name": "Cara's Cleaning",
+    "city": "Vancouver",
+    "province": "BC",
+}
+
+
+def test_a_signed_in_customer_can_register_their_business_on_the_same_account(
+    client, unique_email, category_id, plan_ids
+):
+    headers = _customer(client, unique_email)
+
+    r = client.post("/api/v1/registration/convert", json={**CONVERT, "category_id": category_id}, headers=headers)
+
+    assert r.status_code == 200, r.text
+    state = r.json()
+    assert state["step"] == 2 and state["completed"] is False
+    assert state["account"]["email"] == unique_email
+    me = client.get("/api/v1/me", headers=headers).json()
+    assert (me["role"], me["is_active"]) == ("business_owner", False)
+    # The rest of registration works on the same token.
+    _choose(client, headers, plan_ids["Basic"])
+    done = client.post("/api/v1/registration/complete", json={"accept_terms": True}, headers=headers)
+    assert done.json()["business"]["name"] == "Cara's Cleaning"
+    assert client.get("/api/v1/businesses/owner/mine", headers=headers).status_code == 200
+
+
+def test_convert_is_only_for_customers(client, unique_email, category_id, session_factory):
+    body = {**CONVERT, "category_id": category_id}
+    owner = _auth(_start(client, category_id))
+    admin = _customer(client, f"admin-{unique_email}")
+    with session_factory() as db:
+        db.query(User).filter(User.email == f"admin-{unique_email}").update({"is_admin": True})
+        db.commit()
+
+    assert client.post("/api/v1/registration/convert", json=body, headers=owner).status_code == 409
+    assert client.post("/api/v1/registration/convert", json=body, headers=admin).status_code == 403
+    assert client.post("/api/v1/registration/convert", json=body).status_code == 401

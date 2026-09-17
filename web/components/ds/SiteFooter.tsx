@@ -36,8 +36,9 @@ export default function SiteFooter({
     {
       heading: t("footer.forBusinesses"),
       links: [
-        { href: "/dashboard/new-listing", label: t("footer.addListing") },
-        // The same flow as above, under the name people search for.
+        // Both go to registration, which sends an owner who has already
+        // registered on to adding another listing.
+        { href: "/register", label: t("footer.addListing") },
         { href: "/register", label: t("footer.freeListing") },
         { href: "/dashboard", label: t("footer.ownerSignIn") },
       ],
@@ -77,7 +78,7 @@ export default function SiteFooter({
               <h2 className="text-micro uppercase text-ink-subtle">{column.heading}</h2>
               <ul className="mt-3 space-y-2">
                 {column.links.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.label}>
                     <Link
                       href={link.href}
                       className="rounded-sm text-body text-ink-muted hover:text-brand-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
