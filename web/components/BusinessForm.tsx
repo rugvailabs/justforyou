@@ -19,17 +19,32 @@ import { useState } from "react";
 import { Alert } from "@/components/ds/feedback";
 import { Button, Card } from "@/components/ds/primitives";
 import { FIELD, LABEL } from "@/components/ds/form";
+import { hasGoogleMaps } from "@/lib/maps";
 import type { BusinessCreate, BusinessDetail, Category } from "@/lib/types";
 
-// Leaflet touches window at import, so it can never be server-rendered.
-const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-64 w-full items-center justify-center rounded-card border border-line bg-surface-muted text-body text-ink-subtle">
-      Loading map…
-    </div>
-  ),
-});
+type LocationPickerProps = {
+  latitude: number | null;
+  longitude: number | null;
+  onPick: (lat: number, lng: number) => void;
+  addressQuery?: string;
+};
+
+// Both map libraries touch window at import, so neither can be server-rendered.
+// Google Maps when a key is configured, Leaflet otherwise (see lib/maps).
+const LocationPicker = dynamic<LocationPickerProps>(
+  () =>
+    hasGoogleMaps
+      ? import("@/components/maps/GoogleLocationPicker")
+      : import("@/components/LocationPicker"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-64 w-full items-center justify-center rounded-card border border-line bg-surface-muted text-body text-ink-subtle">
+        Loading map…
+      </div>
+    ),
+  },
+);
 
 const DAYS: { key: string; label: string }[] = [
   { key: "mon", label: "Monday" },
@@ -344,6 +359,10 @@ export default function BusinessForm({
             setLatitude(lat);
             setLongitude(lng);
           }}
+          addressQuery={[address, city, province, postalCode]
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .join(", ")}
         />
       </Card>
 

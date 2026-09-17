@@ -18,7 +18,14 @@
 import "leaflet/dist/leaflet.css";
 
 import L from "leaflet";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import { useEffect } from "react";
 
 import { formatLocality, formatRating } from "@/lib/format";
@@ -67,9 +74,12 @@ function FitBounds({ points }: { points: [number, number][] }): null {
 
 export default function ResultsMapView({
   businesses,
+  origin,
   className = "",
 }: {
   businesses: BusinessListItem[];
+  /** The searcher's position on a near-me search. */
+  origin?: { lat: number; lng: number };
   className?: string;
 }): JSX.Element {
   const mapped = businesses.filter(
@@ -81,6 +91,7 @@ export default function ResultsMapView({
     business.latitude,
     business.longitude,
   ]);
+  if (origin) points.push([origin.lat, origin.lng]);
 
   // Downtown Vancouver, which is where the directory's data actually is. Only
   // used for the frame before FitBounds runs, or when nothing has coordinates.
@@ -99,6 +110,16 @@ export default function ResultsMapView({
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds points={points} />
+
+      {origin ? (
+        <CircleMarker
+          center={[origin.lat, origin.lng]}
+          radius={7}
+          pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#1a73e8", fillOpacity: 1 }}
+        >
+          <Popup>Your location</Popup>
+        </CircleMarker>
+      ) : null}
 
       {mapped.map((business) => (
         <Marker

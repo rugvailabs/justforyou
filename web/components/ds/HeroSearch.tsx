@@ -4,10 +4,10 @@
  * The homepage search: What / Where, plus a real "near me".
  *
  * Larger sibling of HeaderSearch, and the same contract - it builds a real
- * /search URL with the parameters the backend already understands. The
- * geolocation path is Step 2's SearchBar logic unchanged: browser position,
- * a 25 km radius, sort by distance, and an error message that tells the
- * person what to do instead rather than just reporting failure.
+ * /search URL with the parameters the backend already understands. "Near me"
+ * adds `near=me`; the search page asks the browser for the position and applies
+ * the radius (see NearMeLocator). Typing "plumber near
+ * me" into What does the same.
  */
 
 import { useRouter } from "next/navigation";
@@ -16,9 +16,6 @@ import { LocateFixed, MapPin, Search } from "lucide-react";
 
 import { Button } from "@/components/ds/primitives";
 import { tFor, type Locale } from "@/lib/i18n";
-
-/** Radius applied to a "near me" search, in km. Matches Step 2 and the app. */
-const NEAR_ME_RADIUS_KM = 25;
 
 export default function HeroSearch({
   locale = "en",
@@ -33,8 +30,6 @@ export default function HeroSearch({
 
   const [what, setWhat] = useState("");
   const [where, setWhere] = useState("");
-  const [locating, setLocating] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
 
   function buildUrl(extra: Record<string, string> = {}): string {
     const params = new URLSearchParams();
@@ -47,41 +42,13 @@ export default function HeroSearch({
 
   function onSubmit(event: React.FormEvent): void {
     event.preventDefault();
-    setGeoError(null);
     router.push(buildUrl());
   }
 
-  function useMyLocation(): void {
-    setGeoError(null);
-
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setGeoError("This browser does not support location sharing.");
-      return;
-    }
-
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false);
-        router.push(
-          buildUrl({
-            lat: position.coords.latitude.toFixed(6),
-            lng: position.coords.longitude.toFixed(6),
-            radius_km: String(NEAR_ME_RADIUS_KM),
-            sort: "distance",
-          }),
-        );
-      },
-      (error) => {
-        setLocating(false);
-        setGeoError(
-          error.code === error.PERMISSION_DENIED
-            ? "Location permission denied. Enter a city instead."
-            : "Could not get your location. Enter a city instead.",
-        );
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
+  // The position itself is asked for on /search (NearMeLocator), so every
+  // near-me entry point shares one permission flow and one error message.
+  function searchNearMe(): void {
+    router.push(buildUrl({ near: "me" }));
   }
 
   return (
@@ -120,27 +87,17 @@ export default function HeroSearch({
             type="button"
             variant="secondary"
             size="lg"
-            onClick={useMyLocation}
-            disabled={locating}
+            onClick={searchNearMe}
             className="flex-1 sm:flex-none"
           >
             <LocateFixed aria-hidden="true" />
-            {locating ? t("common.loading") : t("common.nearMe")}
+            {t("common.nearMe")}
           </Button>
           <Button type="submit" size="lg" className="flex-1 sm:flex-none">
             {t("common.search")}
           </Button>
         </div>
       </form>
-
-      {geoError !== null ? (
-        <p
-          role="status"
-          className="mt-2 rounded-input bg-warning-bg px-3 py-2 text-meta text-warning"
-        >
-          {geoError}
-        </p>
-      ) : null}
     </div>
   );
 }

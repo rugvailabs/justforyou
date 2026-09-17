@@ -50,6 +50,8 @@ export default function LocationPicker({
   latitude: number | null;
   longitude: number | null;
   onPick: (lat: number, lng: number) => void;
+  /** Used by the Google picker's address lookup; OpenStreetMap has no geocoder here. */
+  addressQuery?: string;
 }): JSX.Element {
   const hasPoint = latitude !== null && longitude !== null;
   const centre: [number, number] = hasPoint

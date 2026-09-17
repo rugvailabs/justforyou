@@ -55,6 +55,7 @@ import {
   formatPostalCode,
 } from "@/lib/format";
 import { DEFAULT_LOCALE, INTL_LOCALE, tFor } from "@/lib/i18n";
+import { googleDirectionsUrl, googleMapsUrl } from "@/lib/maps";
 import type { BusinessReview, BusinessReviewSummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -213,7 +214,7 @@ export default async function BusinessPage({
           {hasPoint ? (
             <Button asChild variant="ghost">
               <a
-                href={`https://www.openstreetmap.org/directions?to=${business.latitude}%2C${business.longitude}`}
+                href={googleDirectionsUrl(business.latitude as number, business.longitude as number)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -284,7 +285,7 @@ export default async function BusinessPage({
                       name={business.name}
                     />
                     <a
-                      href={`https://www.openstreetmap.org/?mlat=${business.latitude}&mlon=${business.longitude}#map=17/${business.latitude}/${business.longitude}`}
+                      href={googleMapsUrl(business.latitude as number, business.longitude as number)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-2 inline-block rounded-sm text-meta text-brand-700 underline underline-offset-4 hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"

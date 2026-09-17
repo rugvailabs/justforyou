@@ -11,11 +11,14 @@
  * A plain <form method="get"> would submit `q=&city=` for empty fields and
  * cannot preserve the other filters the search page holds, so this builds the
  * URL and pushes it.
+ *
+ * The locate button is the header's "near me": it adds `near=me` and the
+ * search page asks for the position. Typing "near me" into What works too.
  */
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { MapPin, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LocateFixed, MapPin, Search } from "lucide-react";
 
 import { Button } from "@/components/ds/primitives";
 import { tFor, type Locale } from "@/lib/i18n";
@@ -33,15 +36,29 @@ export default function HeaderSearch({
   const [what, setWhat] = useState(params.get("q") ?? "");
   const [where, setWhere] = useState(params.get("city") ?? "");
 
-  function submit(event: React.FormEvent): void {
-    event.preventDefault();
+  // The header stays mounted across /search navigations, so re-seed when the
+  // URL changes - e.g. "plumber near me" becoming q=plumber once located.
+  const urlQ = params.get("q") ?? "";
+  const urlCity = params.get("city") ?? "";
+  useEffect(() => {
+    setWhat(urlQ);
+    setWhere(urlCity);
+  }, [urlQ, urlCity]);
+
+  function go(nearMe: boolean): void {
     const next = new URLSearchParams();
     const q = what.trim();
     const city = where.trim();
     if (q) next.set("q", q);
     if (city) next.set("city", city);
+    if (nearMe) next.set("near", "me");
     const query = next.toString();
     router.push(query ? `/search?${query}` : "/search");
+  }
+
+  function submit(event: React.FormEvent): void {
+    event.preventDefault();
+    go(false);
   }
 
   return (
@@ -76,6 +93,17 @@ export default function HeaderSearch({
           className="h-10 w-full min-w-0 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
         />
       </div>
+
+      <button
+        type="button"
+        onClick={() => go(true)}
+        title={t("common.nearMe")}
+        className="my-1 flex shrink-0 items-center gap-1.5 rounded-input px-2 text-meta font-medium text-brand-700 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <LocateFixed className="size-4" aria-hidden="true" />
+        <span className="hidden md:inline">{t("common.nearMe")}</span>
+        <span className="sr-only md:hidden">{t("common.nearMe")}</span>
+      </button>
 
       <Button type="submit" size="sm" className="m-1 shrink-0">
         <Search aria-hidden="true" />

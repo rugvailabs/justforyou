@@ -59,7 +59,7 @@ export const en = {
     closedDay: "Closed",
     location: "Location",
     notMapped: "This listing has no coordinates, so it cannot be mapped.",
-    openInMaps: "Open in OpenStreetMap",
+    openInMaps: "Open in Google Maps",
     contact: "Contact",
     phone: "Phone",
     phoneHidden: "Use “Show number”",

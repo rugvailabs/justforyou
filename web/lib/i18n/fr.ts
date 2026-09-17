@@ -62,7 +62,7 @@ export const fr: Dictionary = {
     closedDay: "Fermé",
     location: "Emplacement",
     notMapped: "Cette fiche n’a pas de coordonnées ; elle ne peut pas être cartographiée.",
-    openInMaps: "Ouvrir dans OpenStreetMap",
+    openInMaps: "Ouvrir dans Google Maps",
     contact: "Coordonnées",
     phone: "Téléphone",
     phoneHidden: "Utilisez « Afficher le numéro »",

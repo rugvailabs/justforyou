@@ -95,6 +95,8 @@ export function formatDistance(km: number | null | undefined, locale = "en-CA"):
     const metres = Math.round(km * 1000);
     return locale.startsWith("fr") ? `${metres} m` : `${metres} m`;
   }
+  // Past 100 km a decimal is noise, and "12298.0 km" needs its separator.
+  if (km >= 100) return `${Math.round(km).toLocaleString(locale)} km`;
   return `${km.toFixed(1)} km`;
 }
 

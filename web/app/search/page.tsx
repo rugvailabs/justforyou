@@ -19,18 +19,20 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { LocateFixed, MapPin } from "lucide-react";
 
 import ListingCard from "@/components/ds/ListingCard";
 import ResultsMap from "@/components/ds/ResultsMap";
+import NearMeLocator from "@/components/ds/NearMeLocator";
 import SearchFilterRail from "@/components/ds/SearchFilterRail";
 import SiteFooter from "@/components/ds/SiteFooter";
 import SiteHeader from "@/components/ds/SiteHeader";
-import { Breadcrumbs, EmptyState } from "@/components/ds/feedback";
+import { Alert, Breadcrumbs, EmptyState } from "@/components/ds/feedback";
 import { Button, Card } from "@/components/ds/primitives";
 import { ApiError, getCategories, searchBusinesses } from "@/lib/api";
-import { formatCount } from "@/lib/format";
+import { formatCount, formatDistance } from "@/lib/format";
 import { DEFAULT_LOCALE, INTL_LOCALE } from "@/lib/i18n";
+import { splitNearMe } from "@/lib/near-me";
 import type {
   BusinessSearchParams,
   BusinessSort,
@@ -62,13 +64,16 @@ export async function generateMetadata({
   }
   if (params.q) subject = `${params.q}`;
 
-  const where = params.city ?? "Metro Vancouver";
-  const title = `${subject} in ${where}`;
+  const where =
+    params.lat !== undefined || wantsNearMe(searchParams)
+      ? "near you"
+      : `in ${params.city ?? "Metro Vancouver"}`;
+  const title = `${subject} ${where}`;
 
   return {
     title,
     description:
-      `Find ${subject.toLowerCase()} in ${where}. ` +
+      `Find ${subject.toLowerCase()} ${where}. ` +
       "Compare ratings, read reviews and contact businesses directly.",
   };
 }
@@ -101,6 +106,14 @@ function num(value: string | string[] | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+/**
+ * Whether the person asked for results near them - by `near=me` from a button,
+ * or by typing the phrase ("plumber near me") into the query.
+ */
+function wantsNearMe(raw: RawParams): boolean {
+  return one(raw.near) === "me" || splitNearMe(one(raw.q)).nearMe;
+}
+
 /** Translate the URL into API params, dropping anything malformed. */
 function toSearchParams(raw: RawParams): BusinessSearchParams {
   const lat = num(raw.lat);
@@ -115,11 +128,15 @@ function toSearchParams(raw: RawParams): BusinessSearchParams {
   // Guard the same rule the API enforces, so a stale ?sort=distance in a
   // shared link degrades instead of 422-ing.
   if (sort === "distance" && !hasPoint) sort = undefined;
+  // A search with a point is a "near me" search: nearest first unless the
+  // person chose otherwise. The filter rail already displays it that way.
+  if (sort === undefined && hasPoint) sort = "distance";
 
   const page = num(raw.page);
 
   return {
-    q: one(raw.q),
+    // "near me" is an intent, not text to match against listing names.
+    q: splitNearMe(one(raw.q)).query,
     category_slug: one(raw.category),
     city: one(raw.city),
     lat: hasPoint ? lat : undefined,
@@ -151,19 +168,39 @@ export default async function SearchPage({
   searchParams: RawParams;
 }): Promise<JSX.Element> {
   const params = toSearchParams(searchParams);
+  const hasPoint = params.lat !== undefined && params.lng !== undefined;
+
+  // Near me was asked for but the browser has not supplied a position yet:
+  // show the locator instead of running a search that ignores the request.
+  const locating = wantsNearMe(searchParams) && !hasPoint;
 
   const [categoriesResult, resultsResult] = await Promise.allSettled([
     getCategories(),
-    searchBusinesses(params),
+    locating ? Promise.resolve(null) : searchBusinesses(params),
   ]);
 
   const categories: Category[] =
     categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
 
   const failed = resultsResult.status === "rejected";
-  const results: SearchResponse | null = failed
+  let results: SearchResponse | null = failed
     ? null
-    : (resultsResult as PromiseFulfilledResult<SearchResponse>).value;
+    : (resultsResult as PromiseFulfilledResult<SearchResponse | null>).value;
+
+  // Nothing within the radius. Rather than an empty page, show the closest
+  // matches at any distance and say plainly that that is what they are.
+  let widened = false;
+  if (results !== null && results.total === 0 && hasPoint && params.radius_km !== undefined) {
+    const wider = await searchBusinesses({
+      ...params,
+      radius_km: undefined,
+      sort: "distance",
+    }).catch(() => null);
+    if (wider !== null && wider.total > 0) {
+      results = wider;
+      widened = true;
+    }
+  }
 
   const errorMessage = failed
     ? resultsResult.reason instanceof ApiError
@@ -179,7 +216,19 @@ export default async function SearchPage({
   // The h1 states what was actually searched, so a shared link reads as its
   // own page rather than as "Search" with different contents.
   const subject = params.q ?? categoryName ?? "Local businesses";
-  const where = params.city ?? "Metro Vancouver";
+  const where =
+    hasPoint || locating ? "near you" : `in ${params.city ?? "Metro Vancouver"}`;
+
+  // What the locator carries forward: every filter except the location ones,
+  // with the query already cleaned of its "near me" phrase.
+  const locatorParams: Record<string, string> = {};
+  for (const [key, value] of Object.entries(searchParams)) {
+    const single = one(value);
+    if (single === undefined) continue;
+    if (["near", "lat", "lng", "radius_km", "sort", "page", "q"].includes(key)) continue;
+    locatorParams[key] = single;
+  }
+  if (params.q !== undefined) locatorParams.q = params.q;
 
   const items = results?.items ?? [];
   const mappable = items.filter(
@@ -202,13 +251,13 @@ export default async function SearchPage({
         <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-page-title text-ink">
-              {subject} in {where}
+              {subject} {where}
             </h1>
             {results !== null ? (
               <p className="mt-1 text-body text-ink-muted">
                 <span className="tabular">{formatCount(results.total, intl)}</span>{" "}
                 {results.total === 1 ? "listing" : "listings"}
-                {params.lat !== undefined ? " near you" : ""}
+                {hasPoint && !widened ? ` within ${params.radius_km ?? 25} km` : ""}
                 {results.total_pages > 1
                   ? ` · page ${results.page} of ${results.total_pages}`
                   : ""}
@@ -225,7 +274,20 @@ export default async function SearchPage({
 
           {/* ------------------------------------------------------ results */}
           <div className="min-w-0">
-            {errorMessage !== null ? (
+            {widened ? (
+              <Alert tone="info" className="mb-4">
+                Nothing matches within {params.radius_km} km of you, so these are the
+                closest matches instead
+                {items[0]?.distance_km != null && page === 1
+                  ? ` - the nearest is ${formatDistance(items[0].distance_km, intl)} away`
+                  : ""}
+                .
+              </Alert>
+            ) : null}
+
+            {locating ? (
+              <NearMeLocator query={params.q} baseParams={locatorParams} />
+            ) : errorMessage !== null ? (
               <Card className="border-danger/30 bg-danger-bg p-5">
                 <h2 className="text-card-title text-danger">Search failed</h2>
                 <p className="mt-1 text-body text-danger">{errorMessage}</p>
@@ -292,12 +354,25 @@ export default async function SearchPage({
             <div className="sticky top-20 overflow-hidden rounded-card border border-line bg-surface shadow-raised">
               <div className="h-[28rem]">
                 {mappable > 0 ? (
-                  <ResultsMap businesses={items} />
+                  <ResultsMap
+                    businesses={items}
+                    origin={
+                      hasPoint
+                        ? { lat: params.lat as number, lng: params.lng as number }
+                        : undefined
+                    }
+                  />
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-muted px-6 text-center">
-                    <MapPin className="size-5 text-ink-faint" aria-hidden="true" />
-                    <p className="text-meta text-ink-subtle">
-                      No results on this page have coordinates yet.
+                    {locating ? (
+                      <LocateFixed className="size-5 text-ink-faint" aria-hidden="true" />
+                    ) : (
+                      <MapPin className="size-5 text-ink-faint" aria-hidden="true" />
+                    )}
+                    <p className="text-meta text-ink-muted">
+                      {locating
+                        ? "The map appears once your location is found."
+                        : "No results on this page have coordinates yet."}
                     </p>
                   </div>
                 )}

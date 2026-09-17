@@ -17,7 +17,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
+import { LocateFixed, SlidersHorizontal, X } from "lucide-react";
 
 import { Button, Label, Select } from "@/components/ds/primitives";
 import { cn } from "@/lib/cn";
@@ -226,6 +226,17 @@ export default function SearchFilterRail({
           </Select>
         </div>
 
+        {!hasPoint ? (
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => apply({ near: "me" })}
+          >
+            <LocateFixed aria-hidden="true" />
+            {t("common.nearMe")}
+          </Button>
+        ) : null}
+
         {hasPoint ? (
           <div className="rounded-input bg-brand-50 p-3">
             <p className="text-meta text-brand-800">
@@ -238,6 +249,7 @@ export default function SearchFilterRail({
               className="mt-1 h-auto p-0"
               onClick={() =>
                 apply({
+                  near: undefined,
                   lat: undefined,
                   lng: undefined,
                   radius_km: undefined,

@@ -53,7 +53,7 @@ export const HERO_SLIDES: readonly HeroSlide[] = [
     headline: "Find what is closest to you",
     subhead:
       "Search by trade, filter by city and rating, or sort by distance from where you are.",
-    cta: { label: "Search near me", href: "/search?sort=distance" },
+    cta: { label: "Search near me", href: "/search?near=me" },
     image: { src: "/hero/slide-2.svg", alt: "" },
   },
   {
