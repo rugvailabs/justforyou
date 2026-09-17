@@ -20,6 +20,7 @@ import { Phone } from "lucide-react";
 import { Button } from "@/components/ds/primitives";
 import { formatPhone, telHref } from "@/lib/format";
 import { tFor, type Locale } from "@/lib/i18n";
+import { trackSearchClick } from "@/lib/track-search-click";
 
 async function trackCallClick(businessId: number): Promise<void> {
   try {
@@ -43,9 +44,12 @@ export default function ShowNumber({
   size = "sm",
   variant = "secondary",
   className,
+  searchId,
 }: {
   businessId: number;
   phone: string;
+  /** Set inside search results, so the reveal also counts as a click there. */
+  searchId?: string | null;
   locale?: Locale;
   size?: "sm" | "md";
   variant?: "primary" | "secondary";
@@ -77,6 +81,7 @@ export default function ShowNumber({
         setRevealed(true);
         // Not awaited: the number appears immediately regardless.
         void trackCallClick(businessId);
+        trackSearchClick(searchId, businessId, "call");
       }}
     >
       <Phone aria-hidden="true" />

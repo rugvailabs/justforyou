@@ -69,6 +69,10 @@
     --closed-bg: 0 78% 97%;
     --sponsored: 43 96% 30%;
     --sponsored-bg: 48 100% 96%;
+    /* Silver, for Promoted (Monthly) placement - the gold above is Featured.
+       Measured: 6.48:1 on its own ground, 7.64:1 on white. */
+    --promoted: 215 16% 34%;
+    --promoted-bg: 214 24% 93%;
     --verified: 175 77% 26%;
     --verified-bg: 166 76% 96%;
     --danger: 0 72% 45%;
@@ -112,6 +116,9 @@
     --closed-bg: 0 40% 15%;
     --sponsored: 43 90% 62%;
     --sponsored-bg: 43 40% 14%;
+    /* 8.19:1 on its own ground, 10.14:1 on surface. */
+    --promoted: 214 20% 80%;
+    --promoted-bg: 215 16% 19%;
     --verified: 172 66% 55%;
     --verified-bg: 175 40% 14%;
     --danger: 0 75% 68%;

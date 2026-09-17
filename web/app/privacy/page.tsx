@@ -60,9 +60,19 @@ export default function PrivacyPage(): JSX.Element {
           number on a listing, we record that so the business owner can see the
           lead. We do not record the call - we cannot, and we do not want to.
         </li>
+        <li>
+          <strong>What search showed you.</strong> When search results are shown
+          we record which listings appeared, in what order, and whether you
+          opened, called or enquired with one. We keep your approximate area -
+          to about a kilometre - never your exact location, and link it to your
+          account only if you were signed in. Business owners see totals for
+          their own listing, never who searched.
+        </li>
       </ul>
       <p>
-        We do not sell any of it, and we do not use it for advertising.
+        We do not sell any of it, and we do not use it to target advertising at
+        you. Some businesses pay to appear higher in search; those results are
+        always labelled Featured or Promoted.
       </p>
 
       <h2>Verification documents</h2>

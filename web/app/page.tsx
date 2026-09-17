@@ -23,6 +23,7 @@ import HeroBanner from "@/components/HeroBanner/HeroBanner";
 import TravelTiles from "@/components/HeroBanner/TravelTiles";
 import HeroSearch from "@/components/ds/HeroSearch";
 import ListingCard from "@/components/ds/ListingCard";
+import PlacementNote from "@/components/ds/PlacementNote";
 import SiteFooter from "@/components/ds/SiteFooter";
 import SiteHeader from "@/components/ds/SiteHeader";
 import { EmptyState } from "@/components/ds/feedback";
@@ -60,6 +61,8 @@ export default async function HomePage(): Promise<JSX.Element> {
     categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
   const topRated: BusinessListItem[] =
     topRatedResult.status === "fulfilled" ? topRatedResult.value.items : [];
+  const topRatedSearchId =
+    topRatedResult.status === "fulfilled" ? topRatedResult.value.search_id : null;
 
   const categoriesError =
     categoriesResult.status === "rejected" ? describe(categoriesResult.reason) : null;
@@ -220,9 +223,15 @@ export default async function HomePage(): Promise<JSX.Element> {
                 </Link>
               </div>
 
+              <PlacementNote items={topRated} locale={locale} className="mb-3" />
               <div className="grid gap-3 lg:grid-cols-2">
                 {topRated.map((business) => (
-                  <ListingCard key={business.id} business={business} locale={locale} />
+                  <ListingCard
+                    key={business.id}
+                    business={business}
+                    searchId={topRatedSearchId}
+                    locale={locale}
+                  />
                 ))}
               </div>
             </div>

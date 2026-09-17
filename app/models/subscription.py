@@ -1,9 +1,9 @@
 """Plans and subscriptions.
 
-Scaffolding for paid listings, built so that money can be switched on later
-without a schema change. Nothing in the directory reads these tables yet:
-search visibility depends on moderation and KYC, never on whether a business
-pays (see search_businesses()).
+Search reads these tables for placement: a live subscription puts a listing in
+the Annual, Monthly or Basic tier, which decides where it ranks
+(app/services/placement.py). Whether it appears at all still depends only on
+moderation and KYC, never on whether the business pays.
 
 The gateway columns are named `gateway_*` rather than `stripe_*` on the
 Subscription because the row is the local record of an arrangement; which

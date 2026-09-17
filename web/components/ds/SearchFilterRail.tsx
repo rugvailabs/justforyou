@@ -59,7 +59,9 @@ export default function SearchFilterRail({
   const hasPoint = params.get("lat") !== null && params.get("lng") !== null;
   const activeCategory = params.get("category") ?? "";
   const activeRating = params.get("min_rating") ?? "";
-  const activeSort = params.get("sort") ?? (hasPoint ? "distance" : "relevance");
+  // "Most relevant" is the default even near me: within each plan tier it
+  // orders by rating, then distance.
+  const activeSort = params.get("sort") ?? "relevance";
   const activeCity = params.get("city") ?? "";
 
   const activeCount = ["q", "category", "city", "min_rating", "sort", "lat"].filter(

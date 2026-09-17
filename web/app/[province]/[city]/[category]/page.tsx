@@ -23,7 +23,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import ListingCard from "@/components/ds/ListingCard";
+import TieredResults from "@/components/ds/TieredResults";
 import SiteFooter from "@/components/ds/SiteFooter";
 import SiteHeader from "@/components/ds/SiteHeader";
 import { Breadcrumbs, EmptyState } from "@/components/ds/feedback";
@@ -111,7 +111,8 @@ export default async function CityCategoryPage({
   // Only the second is a 404, and telling them apart costs a request we make
   // only in the case that is already empty.
   if (results === null || results.total === 0) {
-    const anyHere = await searchBusinesses({ city, page_size: 1 }).catch(() => null);
+    // An existence check nobody sees, so not logged as an impression.
+    const anyHere = await searchBusinesses({ city, page_size: 1, track: false }).catch(() => null);
     if (anyHere === null || anyHere.total === 0) notFound();
   }
 
@@ -150,13 +151,12 @@ export default async function CityCategoryPage({
           />
         ) : (
           <>
-            <ul className="mt-6 space-y-3">
-              {items.map((business) => (
-                <li key={business.id}>
-                  <ListingCard business={business} locale={locale} />
-                </li>
-              ))}
-            </ul>
+            <TieredResults
+              items={items}
+              searchId={results?.search_id}
+              locale={locale}
+              className="mt-6"
+            />
 
             {total > items.length ? (
               <div className="mt-6">

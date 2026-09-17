@@ -26,6 +26,8 @@ import type {
   BusinessReviewCreate,
   BusinessReviewSummary,
   BusinessSearchParams,
+  BusinessSearchPerformance,
+  ClickAction,
   BusinessStatus,
   BusinessUpdate,
   BusinessVerification,
@@ -49,6 +51,7 @@ import type {
   RegistrationState,
   PresignResponse,
   ProfileUpdate,
+  SearchAnalytics,
   LoginRequest,
   AdminEnquiryPage,
   SearchResponse,
@@ -325,9 +328,11 @@ export function searchBusinesses(
     qs.set(key, String(value));
   }
   const suffix = qs.toString();
+  // Signed-in searches are attributed in search analytics; the token is sent
+  // when there is one, and search stays public when there is not.
   return apiFetch<SearchResponse>(
     `/businesses/search${suffix ? `?${suffix}` : ""}`,
-    { method: "GET", auth: false },
+    { method: "GET" },
   );
 }
 
@@ -977,3 +982,33 @@ export function completeFreeRegistration(acceptTerms: boolean): Promise<Registra
   });
 }
 
+/* ------------------------------------------------------ search analytics */
+
+/** POST /search/clicks - a search result was opened, called or enquired. */
+export function recordSearchClick(payload: {
+  search_id: string;
+  business_id: number;
+  action: ClickAction;
+}): Promise<{ recorded: boolean }> {
+  return apiFetch<{ recorded: boolean }>("/search/clicks", {
+    method: "POST",
+    body: payload,
+    auth: false,
+  });
+}
+
+/** GET /admin/search-analytics - CTR per tier, rotation fairness, top performers. */
+export function getSearchAnalytics(days = 30): Promise<SearchAnalytics> {
+  return apiFetch<SearchAnalytics>(`/admin/search-analytics?days=${days}`, { method: "GET" });
+}
+
+/** GET /businesses/{id}/search-performance - one listing, for its owner. */
+export function getBusinessSearchPerformance(
+  businessId: number,
+  days = 30,
+): Promise<BusinessSearchPerformance> {
+  return apiFetch<BusinessSearchPerformance>(
+    `/businesses/${businessId}/search-performance?days=${days}`,
+    { method: "GET" },
+  );
+}

@@ -17,11 +17,11 @@
  * item does not have.
  */
 
-import Link from "next/link";
 import { Globe, MapPin } from "lucide-react";
 
 import ShowNumber from "@/components/ds/ShowNumber";
-import { RatingPill, VerifiedBadge } from "@/components/ds/indicators";
+import TrackedLink from "@/components/ds/TrackedLink";
+import { PlacementBadge, RatingPill, VerifiedBadge } from "@/components/ds/indicators";
 import { Button, Card } from "@/components/ds/primitives";
 import { cn } from "@/lib/cn";
 import { formatDistance, formatLocality } from "@/lib/format";
@@ -49,10 +49,13 @@ function initials(name: string): string {
 
 export default function ListingCard({
   business,
+  searchId,
   locale = "en",
   className,
 }: {
   business: BusinessListItem;
+  /** The search this card was shown in, for click tracking. */
+  searchId?: string | null;
   locale?: Locale;
   className?: string;
 }): JSX.Element {
@@ -61,7 +64,16 @@ export default function ListingCard({
   const distance = formatDistance(business.distance_km, intl);
 
   return (
-    <Card className={cn("flex gap-4 p-4 transition-colors hover:border-line-strong", className)}>
+    <Card
+      className={cn(
+        "flex gap-4 p-4 transition-colors hover:border-line-strong",
+        // A paid card carries its tier's colour on the edge, so the hierarchy
+        // reads at a glance down the list.
+        business.subscription_tier === "annual" && "border-l-4 border-l-sponsored",
+        business.subscription_tier === "monthly" && "border-l-4 border-l-promoted",
+        className,
+      )}
+    >
       <div
         aria-hidden="true"
         className={cn(
@@ -74,16 +86,29 @@ export default function ListingCard({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="text-card-title text-ink">
-            {/* The whole card is not a link: it holds buttons, and nesting
-                interactive elements inside an anchor breaks both. */}
-            <Link
-              href={`/business/${business.slug}`}
-              className="rounded-sm hover:text-brand-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              {business.name}
-            </Link>
-          </h3>
+          <div className="min-w-0">
+            <h3 className="text-card-title text-ink">
+              {business.featured_badge ? (
+                <span aria-hidden="true" className="mr-1">
+                  {business.featured_badge}
+                </span>
+              ) : null}
+              {/* The whole card is not a link: it holds buttons, and nesting
+                  interactive elements inside an anchor breaks both. */}
+              <TrackedLink
+                href={`/business/${business.slug}`}
+                searchId={searchId}
+                businessId={business.id}
+                action="view"
+                className="rounded-sm hover:text-brand-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                {business.name}
+              </TrackedLink>
+            </h3>
+            {/* A paid position is labelled on the card itself, wherever the
+                card appears - the order of the list depends on it. */}
+            <PlacementBadge tier={business.subscription_tier} locale={locale} className="mt-1" />
+          </div>
           {/* Everything in public search has passed KYC - that is the gate -
               so visibility itself is the proof. */}
           <VerifiedBadge implied locale={locale} />
@@ -126,15 +151,33 @@ export default function ListingCard({
         ) : null}
 
         <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild variant="secondary" size="sm">
+            <TrackedLink
+              href={`/business/${business.slug}`}
+              searchId={searchId}
+              businessId={business.id}
+              action="view"
+            >
+              {t("listing.viewDetails")}
+            </TrackedLink>
+          </Button>
           {business.phone !== null ? (
             <ShowNumber
               businessId={business.id}
               phone={business.phone}
               locale={locale}
+              searchId={searchId}
             />
           ) : null}
           <Button asChild variant="primary" size="sm">
-            <Link href={`/business/${business.slug}#enquire`}>{t("listing.enquire")}</Link>
+            <TrackedLink
+              href={`/business/${business.slug}#enquire`}
+              searchId={searchId}
+              businessId={business.id}
+              action="enquire"
+            >
+              {t("listing.enquire")}
+            </TrackedLink>
           </Button>
         </div>
       </div>

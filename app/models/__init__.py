@@ -22,6 +22,7 @@ from app.models.message_sent import (
 from app.models.payment import Payment
 from app.models.provider import Provider
 from app.models.review_queue import ReviewDecision, ReviewQueue
+from app.models.search_impression import SearchImpression
 from app.models.support import SupportKind, SupportMessage
 from app.models.submission import InputType, Submission, SubmissionStatus
 from app.models.subscription import (
@@ -63,6 +64,7 @@ __all__ = [
     "Provider",
     "ReviewQueue",
     "ReviewDecision",
+    "SearchImpression",
     "SupportKind",
     "SupportMessage",
     "Submission",

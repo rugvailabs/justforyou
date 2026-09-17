@@ -61,6 +61,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--sponsored) / <alpha-value>)",
           bg: "hsl(var(--sponsored-bg) / <alpha-value>)",
         },
+        promoted: {
+          DEFAULT: "hsl(var(--promoted) / <alpha-value>)",
+          bg: "hsl(var(--promoted-bg) / <alpha-value>)",
+        },
         verified: {
           DEFAULT: "hsl(var(--verified) / <alpha-value>)",
           bg: "hsl(var(--verified-bg) / <alpha-value>)",

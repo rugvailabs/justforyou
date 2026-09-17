@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import enum
+import uuid
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -66,6 +67,25 @@ class BusinessListItem(BaseModel):
     # Great-circle distance from the ?lat/?lng the caller passed. Absent from
     # every response that did not supply a point to measure from.
     distance_km: float | None = None
+    # Paid placement (app/services/placement.py). Results arrive already
+    # ordered by it; these say why, so the page can label paid positions.
+    subscription_tier: Literal["annual", "monthly", "basic", "none"] = "none"
+    # True for Annual subscribers.
+    is_featured: bool = False
+    # "⭐" for Annual, "📈" for Monthly, otherwise None.
+    featured_badge: str | None = None
+    # What the card shows: "⭐ Featured" / "📈 Promoted", otherwise None.
+    badge: str | None = None
+    # "Featured Business" / "Promoted Business", otherwise None.
+    badge_label: str | None = None
+    # 1 Annual, 2 Monthly, 3 Basic; None without a live plan.
+    display_priority: int | None = None
+    # 1-based place in the whole result set, across pages.
+    position: int = 0
+    # Monthly only: one of this half hour's three rotation leaders.
+    in_rotation: bool = False
+    # Why it is placed here: tier, rotation, and rank within the tier.
+    display_reason: str = ""
 
 
 class SearchResponse(BaseModel):
@@ -76,6 +96,9 @@ class SearchResponse(BaseModel):
     total_pages: int
     has_next: bool
     has_prev: bool
+    # Identifies this page of results for click tracking (POST /search/clicks).
+    # None when nothing was logged: no results, or track=false.
+    search_id: uuid.UUID | None = None
 
 
 class BusinessOwnerItem(BaseModel):

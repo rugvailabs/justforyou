@@ -21,9 +21,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LocateFixed, MapPin } from "lucide-react";
 
-import ListingCard from "@/components/ds/ListingCard";
 import ResultsMap from "@/components/ds/ResultsMap";
 import NearMeLocator from "@/components/ds/NearMeLocator";
+import TieredResults from "@/components/ds/TieredResults";
 import SearchFilterRail from "@/components/ds/SearchFilterRail";
 import SiteFooter from "@/components/ds/SiteFooter";
 import SiteHeader from "@/components/ds/SiteHeader";
@@ -128,9 +128,6 @@ function toSearchParams(raw: RawParams): BusinessSearchParams {
   // Guard the same rule the API enforces, so a stale ?sort=distance in a
   // shared link degrades instead of 422-ing.
   if (sort === "distance" && !hasPoint) sort = undefined;
-  // A search with a point is a "near me" search: nearest first unless the
-  // person chose otherwise. The filter rail already displays it that way.
-  if (sort === undefined && hasPoint) sort = "distance";
 
   const page = num(raw.page);
 
@@ -147,6 +144,19 @@ function toSearchParams(raw: RawParams): BusinessSearchParams {
     page: page !== undefined && page >= 1 ? Math.floor(page) : 1,
     page_size: PAGE_SIZE,
   };
+}
+
+/** The same search in another city, without the location that found nothing. */
+function areaUrl(raw: RawParams, city: string): string {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(raw)) {
+    const single = one(v);
+    if (single === undefined) continue;
+    if (["city", "lat", "lng", "radius_km", "near", "page", "sort"].includes(k)) continue;
+    params.set(k, single);
+  }
+  params.set("city", city);
+  return `/search?${params.toString()}`;
 }
 
 /** Rebuild the current URL with one parameter changed. */
@@ -202,6 +212,29 @@ export default async function SearchPage({
     }
   }
 
+  // Still nothing (a city with none of these, or nothing anywhere near): look
+  // for other areas that do have them, so the page offers somewhere to go.
+  // Not logged as impressions - nobody is shown these listings.
+  let otherAreas: string[] = [];
+  if (results !== null && results.total === 0 && (params.city !== undefined || hasPoint)) {
+    const anywhere = await searchBusinesses({
+      q: params.q,
+      category_slug: params.category_slug,
+      min_rating: params.min_rating,
+      page_size: 50,
+      track: false,
+    }).catch(() => null);
+    const counts = new Map<string, number>();
+    for (const item of anywhere?.items ?? []) {
+      if (item.city.toLowerCase() === params.city?.toLowerCase()) continue;
+      counts.set(item.city, (counts.get(item.city) ?? 0) + 1);
+    }
+    otherAreas = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([city]) => city);
+  }
+
   const errorMessage = failed
     ? resultsResult.reason instanceof ApiError
       ? resultsResult.reason.isNetworkError
@@ -231,6 +264,12 @@ export default async function SearchPage({
   if (params.q !== undefined) locatorParams.q = params.q;
 
   const items = results?.items ?? [];
+  // Results are ordered by plan tier first, so the nearest is not
+  // necessarily the first card.
+  const distances = items
+    .map((item) => item.distance_km)
+    .filter((km): km is number => km !== null);
+  const nearestKm = distances.length > 0 ? Math.min(...distances) : null;
   const mappable = items.filter(
     (business) => business.latitude !== null && business.longitude !== null,
   ).length;
@@ -278,8 +317,8 @@ export default async function SearchPage({
               <Alert tone="info" className="mb-4">
                 Nothing matches within {params.radius_km} km of you, so these are the
                 closest matches instead
-                {items[0]?.distance_km != null && page === 1
-                  ? ` - the nearest is ${formatDistance(items[0].distance_km, intl)} away`
+                {nearestKm !== null && page === 1
+                  ? ` - the nearest is ${formatDistance(nearestKm, intl)} away`
                   : ""}
                 .
               </Alert>
@@ -298,22 +337,34 @@ export default async function SearchPage({
                 </div>
               </Card>
             ) : results !== null && results.total === 0 ? (
-              <EmptyState
-                title="No listings match that"
-                body="Try a broader search - remove the city, lower the minimum rating, or widen the category."
-                action={{ label: "Clear all filters", href: "/search" }}
-              />
+              <>
+                <EmptyState
+                  title={
+                    params.city !== undefined || hasPoint
+                      ? "No services in this area"
+                      : "No listings match that"
+                  }
+                  body="Try a broader search - remove the city, lower the minimum rating, or widen the category."
+                  action={{ label: "Clear all filters", href: "/search" }}
+                />
+                {otherAreas.length > 0 ? (
+                  <div className="mt-4">
+                    <h2 className="text-card-title text-ink">Other areas with {subject.toLowerCase()}</h2>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {otherAreas.map((area) => (
+                        <li key={area}>
+                          <Button asChild variant="secondary" size="sm">
+                            <Link href={areaUrl(searchParams, area)}>{area}</Link>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <>
-                <div className="space-y-3">
-                  {items.map((business) => (
-                    <ListingCard
-                      key={business.id}
-                      business={business}
-                      locale={locale}
-                    />
-                  ))}
-                </div>
+                <TieredResults items={items} searchId={results?.search_id} locale={locale} />
 
                 {results !== null && results.total_pages > 1 ? (
                   <nav

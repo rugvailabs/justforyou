@@ -15,7 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatCount, formatRating } from "@/lib/format";
 import { INTL_LOCALE, tFor, type Locale } from "@/lib/i18n";
 import { getOpenState, type OpeningHours } from "@/lib/opening-hours";
-import type { VerificationStatus } from "@/lib/types";
+import type { SubscriptionTier, VerificationStatus } from "@/lib/types";
 
 /* ------------------------------------------------------------ RatingPill */
 
@@ -199,28 +199,48 @@ export function CategoryChip({
   );
 }
 
-/* ------------------------------------------------------------ SponsoredBadge */
+/* ---------------------------------------------------------- PlacementBadge */
 
 /**
  * Paid placement, labelled as such.
  *
- * NOT WIRED UP. The spec maps this to an `is_featured` field; no such column
- * exists on businesses, and nothing in the API returns one. The treatment is
- * defined here so the design is settled, but no component passes it, because
- * marking listings "sponsored" when none has paid for placement would be a lie
- * told in the product's own voice.
+ * Annual subscribers get a gold "⭐ Featured" badge (Featured Business) and
+ * Monthly subscribers a silver "📈 Promoted" badge (Promoted Business); both
+ * rank above free listings in search (app/services/placement.py). A ranking
+ * bought with money has to be recognisable as one, so the badge says it in
+ * words as well as an icon, and its accessible name and tooltip say it is
+ * paid. Basic and unsubscribed listings render nothing.
  */
-export function SponsoredBadge({
+export function PlacementBadge({
+  tier,
   locale = "en",
   className,
 }: {
+  tier: SubscriptionTier;
   locale?: Locale;
   className?: string;
-}): JSX.Element {
+}): JSX.Element | null {
   const t = tFor(locale);
-  return (
-    <Badge tone="sponsored" className={className}>
-      {t("listing.sponsored")}
-    </Badge>
-  );
+  if (tier === "annual") {
+    return (
+      <Badge tone="sponsored" title={t("listing.featuredHint")} className={className}>
+        <span aria-hidden="true">⭐</span>
+        {/* The label is for sight; a screen reader gets the full hint, which
+            says the placement is paid. aria-label on a span is not reliably
+            announced, so it is visually hidden text instead. */}
+        <span aria-hidden="true">{t("listing.featuredLabel")}</span>
+        <span className="sr-only">{t("listing.featuredHint")}</span>
+      </Badge>
+    );
+  }
+  if (tier === "monthly") {
+    return (
+      <Badge tone="promoted" title={t("listing.promotedHint")} className={className}>
+        <span aria-hidden="true">📈</span>
+        <span aria-hidden="true">{t("listing.promotedLabel")}</span>
+        <span className="sr-only">{t("listing.promotedHint")}</span>
+      </Badge>
+    );
+  }
+  return null;
 }

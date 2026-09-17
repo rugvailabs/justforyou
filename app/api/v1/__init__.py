@@ -19,6 +19,7 @@ from app.api.v1 import (
     profile,
     registration,
     review,
+    search,
     submissions,
     support,
     verification,
@@ -41,6 +42,7 @@ api_router.include_router(payments.router)
 api_router.include_router(profile.router)
 api_router.include_router(registration.router)
 api_router.include_router(review.router)
+api_router.include_router(search.router)
 api_router.include_router(submissions.router)
 api_router.include_router(support.router)
 api_router.include_router(verification.router)

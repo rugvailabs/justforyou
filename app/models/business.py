@@ -174,8 +174,8 @@ class Business(Base):
         back_populates="business", uselist=False, cascade="all, delete-orphan"
     )
     # Plural because a business can subscribe, cancel and subscribe again; the
-    # history is worth keeping. Nothing in the directory reads this - paying is
-    # optional and does not affect visibility.
+    # history is worth keeping. Search reads the live one for placement order
+    # (app/services/placement.py); paying never affects visibility.
     subscriptions: Mapped[list["Subscription"]] = relationship(
         back_populates="business", cascade="all, delete-orphan"
     )

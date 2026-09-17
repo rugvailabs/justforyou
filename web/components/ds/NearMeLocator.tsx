@@ -6,7 +6,7 @@
  * Every "near me" entry point - the hero button, the header's locate button,
  * the banner, the filter rail, and "plumber near me" typed as a query - lands
  * on /search with `near=me` instead of each asking for the browser's position
- * itself. This asks once, then replaces the URL with the lat/lng/radius/sort
+ * itself. This asks once, then replaces the URL with the lat/lng/radius
  * the backend understands, so the result is still a plain shareable search
  * URL and the back button skips the locating step.
  *
@@ -52,7 +52,7 @@ export default function NearMeLocator({
         next.set("lat", position.coords.latitude.toFixed(6));
         next.set("lng", position.coords.longitude.toFixed(6));
         next.set("radius_km", String(NEAR_ME_RADIUS_KM));
-        next.set("sort", "distance");
+        // No sort: the default ranks by plan tier, then rating, then distance.
         next.delete("page");
         router.replace(`/search?${next.toString()}`);
       },

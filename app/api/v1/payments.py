@@ -1,10 +1,9 @@
 """Plans, checkout and subscription state.
 
-Optional by design. Nothing in the directory reads these rows: a business that
-never opens this page is as visible in search as one that pays, and that is
-enforced in search_businesses() rather than promised here. If paid placement
-is ever introduced it should be a separate, visibly-labelled surface, not a
-silent change to what "relevant" means.
+Paying affects ORDER in search, never VISIBILITY: a business with no plan is
+still found, below the Featured (Annual), Promoted (Monthly) and Basic tiers,
+and every paid position is labelled on the result card. Visibility is still
+decided by moderation and verification alone. See app/services/placement.py.
 
 The endpoints are real and work today. With no STRIPE_SECRET_KEY configured
 they run in stub mode: subscription rows are created and move through their

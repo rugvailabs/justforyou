@@ -18,16 +18,23 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Inbox } from "lucide-react";
 
 import DashboardNav from "@/components/ds/DashboardNav";
+import SearchPerformanceCard from "@/components/ds/SearchPerformanceCard";
 import SiteFooter from "@/components/ds/SiteFooter";
 import SiteHeader from "@/components/ds/SiteHeader";
 import { EmptyState } from "@/components/ds/feedback";
 import { Badge, Button } from "@/components/ds/primitives";
-import { ApiError, getEnquiries, getMyBusiness } from "@/lib/api";
+import {
+  ApiError,
+  getBusinessSearchPerformance,
+  getEnquiries,
+  getMyBusiness,
+} from "@/lib/api";
 import { requireBusinessOwner } from "@/lib/auth";
 import { formatPhone, telHref } from "@/lib/format";
 import { DEFAULT_LOCALE, INTL_LOCALE } from "@/lib/i18n";
 import type {
   BusinessDetail,
+  BusinessSearchPerformance,
   EnquiryOut,
   EnquiryType,
 } from "@/lib/types";
@@ -94,6 +101,10 @@ export default async function LeadsPage({
   }
 
   const callClicks = leads.filter((l) => l.enquiry_type === "call_click").length;
+  // Secondary to the leads themselves: if it cannot load, the page still works.
+  const performance: BusinessSearchPerformance | null = await getBusinessSearchPerformance(
+    businessId,
+  ).catch(() => null);
 
   return (
     <>
@@ -123,6 +134,12 @@ export default async function LeadsPage({
           className="mt-4"
           newLeads={leads.length}
         />
+
+        {performance !== null ? (
+          <div className="mt-4">
+            <SearchPerformanceCard performance={performance} intl={intl} />
+          </div>
+        ) : null}
 
         {leads.length === 0 ? (
           <EmptyState

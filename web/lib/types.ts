@@ -180,10 +180,36 @@ export interface BusinessListItem {
   verified: boolean;
   /** Only present when the request supplied lat/lng. */
   distance_km: number | null;
+  /**
+   * Paid placement. Results arrive already ordered by it - Annual, Monthly
+   * (rotating every 30 minutes), Basic, then no plan - and a paid position
+   * must be labelled wherever the card is shown.
+   */
+  subscription_tier: SubscriptionTier;
+  /** True for Annual subscribers. */
+  is_featured: boolean;
+  /** "⭐" for Annual, "📈" for Monthly, otherwise null. */
+  featured_badge: string | null;
+  /** "⭐ Featured" / "📈 Promoted", otherwise null. */
+  badge: string | null;
+  /** "Featured Business" / "Promoted Business", otherwise null. */
+  badge_label: string | null;
+  /** 1 Annual, 2 Monthly, 3 Basic; null without a live plan. */
+  display_priority: number | null;
+  /** 1-based place in the whole result set, across pages. */
+  position: number;
+  /** Monthly only: one of this half hour's three rotation leaders. */
+  in_rotation: boolean;
+  /** Why it sits here, e.g. "Annual subscriber (Featured), highest rated". */
+  display_reason: string;
 }
+
+export type SubscriptionTier = "annual" | "monthly" | "basic" | "none";
 
 /** GET /api/v1/businesses/search */
 export interface SearchResponse {
+  /** Identifies this page of results for click tracking; null when not logged. */
+  search_id: string | null;
   items: BusinessListItem[];
   total: number;
   page: number;
@@ -208,6 +234,8 @@ export interface BusinessSearchParams {
   page?: number;
   /** 1-50, default 20. */
   page_size?: number;
+  /** false for internal lookups nobody sees, so they are not logged as impressions. */
+  track?: boolean;
 }
 
 /* ------------------------------------------------------- owner dashboard */
@@ -746,3 +774,59 @@ export interface RegistrationPaymentRequest {
   accept_terms: boolean;
 }
 
+/* ------------------------------------------------------ search analytics */
+
+export type ClickAction = "view" | "call" | "enquire";
+
+export interface TierPerformance {
+  tier: SubscriptionTier;
+  impressions: number;
+  clicks: number;
+  /** 0-1. */
+  ctr: number;
+  avg_position: number;
+}
+
+export interface RotationSubscriber {
+  business_id: number;
+  name: string;
+  impressions: number;
+  leader_impressions: number;
+  /** Share of impressions spent in the top three, 0-1. */
+  leader_share: number;
+  clicks: number;
+  ctr: number;
+}
+
+/** GET /admin/search-analytics */
+export interface SearchAnalytics {
+  days: number;
+  tiers: TierPerformance[];
+  rotation: {
+    subscribers: RotationSubscriber[];
+    /** Lowest leader share / highest, 0-1; null until there is enough data. */
+    fairness: number | null;
+    compared: number;
+  };
+  top_performers: {
+    business_id: number;
+    name: string;
+    tier: SubscriptionTier;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }[];
+}
+
+/** GET /businesses/{id}/search-performance */
+export interface BusinessSearchPerformance {
+  business_id: number;
+  days: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  avg_position: number | null;
+  clicks_by_action: Record<ClickAction, number>;
+  impressions_by_tier: Partial<Record<SubscriptionTier, number>>;
+  daily: { day: string; impressions: number; clicks: number }[];
+}

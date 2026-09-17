@@ -17,7 +17,8 @@ type AdminSection =
   | "listings"
   | "verifications"
   | "reviews"
-  | "leads";
+  | "leads"
+  | "search";
 
 const TABS: { key: AdminSection; href: string; label: string }[] = [
   { key: "overview", href: "/admin", label: "Overview" },
@@ -25,6 +26,7 @@ const TABS: { key: AdminSection; href: string; label: string }[] = [
   { key: "verifications", href: "/admin/verifications", label: "Verifications" },
   { key: "reviews", href: "/admin/reviews", label: "Reviews" },
   { key: "leads", href: "/admin/leads", label: "Leads" },
+  { key: "search", href: "/admin/search-analytics", label: "Search analytics" },
 ];
 
 export default function AdminNav({

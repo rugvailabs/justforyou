@@ -24,7 +24,7 @@ import {
   CategoryChip,
   OpenStatus,
   RatingPill,
-  SponsoredBadge,
+  PlacementBadge,
   VerifiedBadge,
 } from "@/components/ds/indicators";
 import { Badge, Button, Card, Input, Label, Select } from "@/components/ds/primitives";
@@ -167,13 +167,14 @@ export default async function DesignSystemPage(): Promise<JSX.Element> {
 
         <Section
           title="Indicators"
-          note="Verified reads real KYC status. Sponsored is styled but unused - no is_featured field exists."
+          note="Verified reads real KYC status. Featured and Promoted mark paid placement (Annual and Monthly plans) wherever a listing card appears."
         >
           <Card className="flex flex-wrap items-center gap-4 p-5">
             <RatingPill rating={4.5} reviewCount={128} />
             <RatingPill rating={null} />
             <VerifiedBadge status="verified" />
-            <SponsoredBadge />
+            <PlacementBadge tier="annual" />
+            <PlacementBadge tier="monthly" />
             <Badge tone="brand">Brand</Badge>
             <Badge tone="warning">Pending</Badge>
             <OpenStatus hours={detail?.opening_hours ?? null} showUnknown />
